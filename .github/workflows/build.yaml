@@ -1,0 +1,18 @@
+name: Build extension
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: npm install
+      - name: Instal VSCE
+        run: npm install -g vsce
+      - name: Build
+        run: vsce package -o mapcomplete.vsix
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: mapcomplete
+          path: mapcomplete.vsix

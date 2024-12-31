@@ -1,0 +1,47 @@
+{
+  "name": "mapcompletevscode",
+  "displayName": "MapComplete VScode",
+  "version": "0.0.1",
+  "publisher": "robinvanderlinde",
+  "author": {
+    "name": "Robin van der Linde",
+    "email": "r@rlin.eu",
+    "url": "https://rlin.eu"
+  },
+  "description": "MapComplete extension for Visual Studio Code",
+  "keywords": [
+    "mapcomplete",
+    "vscode",
+    "extension"
+  ],
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.73.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/assets/svg/mapcomplete_logo.svg"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "lint": "eslint",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@stylistic/eslint-plugin": "^2.9.0",
+    "@types/node": "^20",
+    "@types/vscode": "^1.73.0",
+    "eslint": "^9.13.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
+  }
+}
