@@ -8,6 +8,10 @@
     "email": "r@rlin.eu",
     "url": "https://rlin.eu"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RobinLinde/MapCompleteVSCode.git"
+  },
   "description": "MapComplete extension for Visual Studio Code",
   "keywords": [
     "mapcomplete",
