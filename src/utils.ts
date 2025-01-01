@@ -187,3 +187,35 @@ export async function getTagRenderings(): Promise<vscode.CompletionItem[]> {
 
   return tagRenderings;
 }
+
+/**
+ * Utility function to get the filters from the filters layer
+ * //TODO: This should get ALL filters, not just from the filters layer
+ *
+ * @returns List of CompletionItems for tagRenderings
+ */
+export async function getFilters(): Promise<vscode.CompletionItem[]> {
+  const filtersList: vscode.CompletionItem[] = [];
+
+  // Open the filters layer file
+  const filtersFile = await vscode.workspace.findFiles(
+    "assets/layers/filters/filters.json",
+    "**/node_modules/**"
+  );
+
+  if (filtersFile.length === 0) {
+    console.error("filters.json not found");
+    return [];
+  }
+
+  const content = await vscode.workspace.fs.readFile(filtersFile[0]);
+  const filters = JSON.parse(new TextDecoder().decode(content));
+
+  for (const filter of filters.filter) {
+    filtersList.push(
+      new vscode.CompletionItem(filter.id, vscode.CompletionItemKind.Value)
+    );
+  }
+
+  return filtersList;
+}

@@ -11,6 +11,7 @@
 import * as vscode from "vscode";
 import {
   getCursorPath,
+  getFilters,
   getRawCursorPath,
   getStartEnd,
   getTagRenderings,
@@ -18,6 +19,14 @@ import {
 } from "./utils";
 import { JSONPath } from "jsonc-parser";
 
+/**
+ * Tag rendering completion provider
+ *
+ * This provider will provide a list of existing tagRenderings for autocompletion
+ *
+ * JSON path:
+ * - (layers.{index}.)tagRenderings.{index}(.builtin)
+ */
 export const tagRenderingCompletionProvider =
   vscode.languages.registerCompletionItemProvider(
     {
@@ -55,6 +64,11 @@ export const tagRenderingCompletionProvider =
 
 /**
  * Tag rendering definition provider
+ *
+ * This provider will provide a definition for tagRenderings, allowing users to jump to the tagRendering definition
+ *
+ * JSON path:
+ * - (layers.{index}.)tagRenderings.{index}(.builtin)
  */
 export const tagRenderingDefinitionProvider =
   vscode.languages.registerDefinitionProvider(
@@ -137,6 +151,158 @@ export const tagRenderingDefinitionProvider =
               );
 
               const path: JSONPath = ["tagRenderings", tagRenderingIndex];
+              const startEnd = getStartEnd(layerTextString, path);
+
+              const link: vscode.DefinitionLink = {
+                targetUri: layerFile[0],
+                targetRange: startEnd,
+                originSelectionRange: getStartEnd(text, rawJsonPath),
+              };
+
+              return [link];
+            }
+          }
+        }
+
+        return null;
+      },
+    }
+  );
+
+/**
+ * Filter completion provider
+ *
+ * This provider will provide a list of existing filters for autocompletion
+ *
+ * JSON path:
+ * - (layers.{index}.)filter.{index}
+ */
+export const filterCompletionProvider =
+  vscode.languages.registerCompletionItemProvider(
+    {
+      language: "json",
+      scheme: "file",
+      pattern: "**/assets/layers/*/*.json",
+    },
+    {
+      async provideCompletionItems(
+        document: vscode.TextDocument,
+        position: vscode.Position
+      ) {
+        // Stop running if the file is called license_info.json
+        if (document.fileName.includes("license_info")) {
+          return [];
+        }
+
+        console.log("filterCompletionProvider");
+        const text = document.getText();
+        const jsonPath = getCursorPath(text, position);
+
+        console.log(jsonPath);
+
+        const regex = /^(layers.\d+.)?filter\.\d+$/;
+        if (regex.exec(jsonPath)) {
+          const filters = await getFilters();
+          console.log(`Got ${filters.length} filters`);
+
+          // Now we need to return the completion items
+          return filters;
+        }
+
+        return [];
+      },
+    }
+  );
+
+/**
+ * Filter definition provider
+ *
+ * This provider will provide a definition for filters, allowing users to jump to the filter definition
+ *
+ * JSON path:
+ * - (layers.{index}.)filter.{index}
+ */
+export const filterDefinitionProvider =
+  vscode.languages.registerDefinitionProvider(
+    {
+      language: "json",
+      scheme: "file",
+      pattern: "**/assets/layers/*/*.json",
+    },
+    {
+      async provideDefinition(
+        document: vscode.TextDocument,
+        position: vscode.Position
+      ) {
+        console.log("filterDefinitionProvider");
+        const text = document.getText();
+        const jsonPath = getCursorPath(text, position);
+        const rawJsonPath = getRawCursorPath(text, position);
+
+        const regex = /^(layers.\d.)?filter.\d*$/;
+
+        if (regex.exec(jsonPath)) {
+          const filter = getValueFromPath(text, rawJsonPath);
+
+          if (typeof filter === "string") {
+            console.log("Found reference to filter", filter);
+            if (filter.indexOf(".") === -1) {
+              console.log("This is a built-in filter");
+              // This is a built-in filter
+              // Read the built-in filters file
+              const layerFile = await vscode.workspace.findFiles(
+                "assets/layers/filters/filters.json"
+              );
+              if (layerFile.length === 0) {
+                return null;
+              }
+
+              const layerText = await vscode.workspace.fs.readFile(
+                layerFile[0]
+              );
+              const layerTextString = new TextDecoder().decode(layerText);
+              const layer = JSON.parse(layerTextString);
+
+              const filterIndex = layer.filter.findIndex(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (f: any) => f.id === filter
+              );
+
+              const path: JSONPath = ["filter", filterIndex];
+              const startEnd = getStartEnd(layerTextString, path);
+
+              const link: vscode.DefinitionLink = {
+                targetUri: layerFile[0],
+                targetRange: startEnd,
+                originSelectionRange: getStartEnd(text, rawJsonPath),
+              };
+
+              return [link];
+            } else {
+              // This is a reference to a filter in another layer
+              // We need to find the layer and the filter
+              const layerName = filter.split(".")[0];
+              const filterName = filter.split(".")[1];
+
+              const layerFile = await vscode.workspace.findFiles(
+                `assets/layers/${layerName}/${layerName}.json`
+              );
+              if (layerFile.length === 0) {
+                return null;
+              }
+
+              const layerText = await vscode.workspace.fs.readFile(
+                layerFile[0]
+              );
+              const layerTextString = new TextDecoder().decode(layerText);
+              const layer = JSON.parse(layerTextString);
+
+              const filterIndex = layer.filter.findIndex(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (f: any) => f.id === filterName
+              );
+
+              const path: JSONPath = ["filter", filterIndex];
               const startEnd = getStartEnd(layerTextString, path);
 
               const link: vscode.DefinitionLink = {

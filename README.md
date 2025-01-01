@@ -8,4 +8,6 @@ Not everything is supported yet, but currently the following features are suppor
 - Definition support for the layer names
 - Definintion support for icons
 - Autocompletion for tagRenderings in questions.json
-- Definition support for tagRenderings in questions.json
+- Definition support for tagRenderings
+- Autocompletion for filter keys in questions.json
+- Definition support for filter keys
