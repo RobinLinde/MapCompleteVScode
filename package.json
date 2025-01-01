@@ -1,22 +1,24 @@
 {
   "name": "mapcompletevscode",
   "displayName": "MapComplete VScode",
-  "version": "0.0.1",
-  "publisher": "robinvanderlinde",
+  "version": "1.0.0",
+  "publisher": "robin-van-der-linde",
   "author": {
     "name": "Robin van der Linde",
     "email": "r@rlin.eu",
     "url": "https://rlin.eu"
   },
+  "icon": "images/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/RobinLinde/MapCompleteVSCode.git"
   },
-  "description": "MapComplete extension for Visual Studio Code",
+  "description": "Extension providing autocompletion and definition supoort for MapComplete themes and layers.",
   "keywords": [
     "mapcomplete",
     "vscode",
-    "extension"
+    "extension",
+    "osm"
   ],
   "private": true,
   "license": "MIT",

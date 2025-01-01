@@ -11,3 +11,8 @@ Not everything is supported yet, but currently the following features are suppor
 - Definition support for tagRenderings
 - Autocompletion for filter keys in questions.json
 - Definition support for filter keys
+- Definition support for paths in license_info.json files
+
+![Demo showing autcomplete for layers and icon definition](images/demo.gif)
+
+All notable changes to this project are documented in the [CHANGELOG](CHANGELOG.md) file.

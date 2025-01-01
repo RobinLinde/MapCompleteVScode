@@ -1,5 +1,7 @@
 # MIT License
 
+The code in this repository is licensed under the MIT License, see below.
+
 Copyright (c) 2024 Robin van der Linde
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
