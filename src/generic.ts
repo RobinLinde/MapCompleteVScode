@@ -35,54 +35,41 @@ export const iconDefinitionProvider =
 
         const regexes = [/icon$/, /icon.render/, /icon.mappings.\d+.then$/];
 
-        for (const regex of regexes) {
-          if (regex.exec(jsonPath)) {
-            const iconPath = getValueFromPath(text, rawJsonPath);
-            console.log("Found reference to icon", iconPath);
+        if (regexes.some((regex) => regex.exec(jsonPath))) {
+          const iconPath = getValueFromPath(text, rawJsonPath);
+          console.log("Found reference to icon", iconPath);
 
-            let fullIconPath: string;
+          let fullIconPath: string;
 
-            // Check if the path starts with a dot, if so, it's a relative path
-            // if not, it's a built-in icon
-            if (!iconPath.startsWith(".")) {
-              fullIconPath = path.join(
-                (vscode.workspace.workspaceFolders
-                  ? vscode.workspace.workspaceFolders[0].uri.fsPath
-                  : "") || "",
-                "assets",
-                "svg",
-                iconPath + ".svg"
-              );
-            } else {
-              fullIconPath = path.join(
-                (vscode.workspace.workspaceFolders
-                  ? vscode.workspace.workspaceFolders[0].uri.fsPath
-                  : "") || "",
-                iconPath
-              );
-            }
-
-            const startEnd = getStartEnd(text, rawJsonPath);
-            console.log("fullIconPath", fullIconPath);
-            console.log(
-              "startEndLines",
-              startEnd.start.line,
-              startEnd.end.line
+          // Check if the path starts with a dot, if so, it's a relative path
+          // if not, it's a built-in icon
+          if (!iconPath.startsWith(".")) {
+            fullIconPath = path.join(
+              (vscode.workspace.workspaceFolders
+                ? vscode.workspace.workspaceFolders[0].uri.fsPath
+                : "") || "",
+              "assets",
+              "svg",
+              iconPath + ".svg"
             );
-            console.log(
-              "startEndChars",
-              startEnd.start.character,
-              startEnd.end.character
+          } else {
+            fullIconPath = path.join(
+              (vscode.workspace.workspaceFolders
+                ? vscode.workspace.workspaceFolders[0].uri.fsPath
+                : "") || "",
+              iconPath
             );
-
-            const link: vscode.DefinitionLink = {
-              targetUri: vscode.Uri.file(fullIconPath),
-              targetRange: new vscode.Range(0, 0, 0, 0),
-              originSelectionRange: startEnd,
-            };
-
-            return [link];
           }
+
+          const startEnd = getStartEnd(text, rawJsonPath);
+
+          const link: vscode.DefinitionLink = {
+            targetUri: vscode.Uri.file(fullIconPath),
+            targetRange: new vscode.Range(0, 0, 0, 0),
+            originSelectionRange: startEnd,
+          };
+
+          return [link];
         }
 
         return [];

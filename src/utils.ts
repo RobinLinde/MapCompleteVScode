@@ -152,3 +152,38 @@ export function getValueFromPath(json: string, path: JSONPath): any {
     }
   }
 }
+
+/**
+ * Utility function to get the tagRenderings from the questions layer
+ * //TODO: This should get ALL tagRenderings, not just from the questions layer
+ *
+ * @returns List of CompletionItems for tagRenderings
+ */
+export async function getTagRenderings(): Promise<vscode.CompletionItem[]> {
+  const tagRenderings: vscode.CompletionItem[] = [];
+
+  // Open the questions layer file
+  const questionsFile = await vscode.workspace.findFiles(
+    "assets/layers/questions/questions.json",
+    "**/node_modules/**"
+  );
+
+  if (questionsFile.length === 0) {
+    console.error("questions.json not found");
+    return [];
+  }
+
+  const content = await vscode.workspace.fs.readFile(questionsFile[0]);
+  const questions = JSON.parse(new TextDecoder().decode(content));
+
+  for (const tagRendering of questions.tagRenderings) {
+    tagRenderings.push(
+      new vscode.CompletionItem(
+        tagRendering.id,
+        vscode.CompletionItemKind.Value
+      )
+    );
+  }
+
+  return tagRenderings;
+}
