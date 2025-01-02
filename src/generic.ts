@@ -21,7 +21,7 @@ export const iconDefinitionProvider =
     {
       language: "json",
       scheme: "file",
-      pattern: "**/assets/**/*.json",
+      pattern: "**/assets/*/*/*.json",
     },
     {
       provideDefinition(

@@ -32,7 +32,7 @@ export const tagRenderingCompletionProvider =
     {
       language: "json",
       scheme: "file",
-      pattern: "**/assets/layers/*/*.json",
+      pattern: "**/assets/*/*/*.json",
     },
     {
       async provideCompletionItems(
@@ -75,7 +75,7 @@ export const tagRenderingDefinitionProvider =
     {
       language: "json",
       scheme: "file",
-      pattern: "**/assets/layers/*/*.json",
+      pattern: "**/assets/*/*/*.json",
     },
     {
       async provideDefinition(
@@ -182,7 +182,7 @@ export const filterCompletionProvider =
     {
       language: "json",
       scheme: "file",
-      pattern: "**/assets/layers/*/*.json",
+      pattern: "**/assets/*/*/*.json",
     },
     {
       async provideCompletionItems(
@@ -227,7 +227,7 @@ export const filterDefinitionProvider =
     {
       language: "json",
       scheme: "file",
-      pattern: "**/assets/layers/*/*.json",
+      pattern: "**/assets/*/*/*.json",
     },
     {
       async provideDefinition(
