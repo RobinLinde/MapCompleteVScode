@@ -31,7 +31,7 @@ Alternatively you van press `Ctrl+P` and paste the following command:
 ext install robin-van-der-linde.mapcompletevscode
 ```
 
-## From Open VSX
+### From Open VSX
 
 You can also install the extension from the [Open VSX registry](https://open-vsx.org/extension/robin-van-der-linde/mapcompletevscode). Just search for "MapComplete" and you should find it.
 
