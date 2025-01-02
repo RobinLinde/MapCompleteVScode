@@ -44,13 +44,15 @@ export const iconDefinitionProvider =
           // Check if the path starts with a dot, if so, it's a relative path
           // if not, it's a built-in icon
           if (!iconPath.startsWith(".")) {
+            // For built-in icons, it's possible that a color is specified, like circle:red, so we need to remove that
+            const parts = iconPath.split(":");
             fullIconPath = path.join(
               (vscode.workspace.workspaceFolders
                 ? vscode.workspace.workspaceFolders[0].uri.fsPath
                 : "") || "",
               "assets",
               "svg",
-              iconPath + ".svg"
+              parts[0] + ".svg"
             );
           } else {
             fullIconPath = path.join(
