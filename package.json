@@ -48,6 +48,7 @@
     "typescript-eslint": "^8.16.0"
   },
   "dependencies": {
+    "colortranslator": "^4.1.0",
     "jsonc-parser": "^3.3.1"
   }
 }
