@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { layerCompletionProvider, layerDefinitionProvider } from "./theme";
-import { iconDefinitionProvider } from "./generic";
+import { colorProvider, iconDefinitionProvider } from "./generic";
 import {
   filterCompletionProvider,
   filterDefinitionProvider,
@@ -25,5 +25,5 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(pathDefinitionProvider);
 
   // Activate all generic features
-  context.subscriptions.push(iconDefinitionProvider);
+  context.subscriptions.push(iconDefinitionProvider, colorProvider);
 }

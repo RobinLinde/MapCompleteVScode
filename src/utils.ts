@@ -219,3 +219,15 @@ export async function getFilters(): Promise<vscode.CompletionItem[]> {
 
   return filtersList;
 }
+
+/**
+ * Utility function to convert a string path to a JSON path
+ *
+ * @param path String path, separated by dots
+ * @returns JSON path
+ */
+export function pathToJSONPath(path: string): JSONPath {
+  return path.split(".").map((str) => {
+    return isNaN(parseInt(str)) ? str : parseInt(str);
+  });
+}
