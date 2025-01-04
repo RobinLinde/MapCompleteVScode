@@ -5,9 +5,12 @@
 import * as vscode from "vscode";
 import { getCursorPath, getRawCursorPath, getStartEnd } from "./utils/cursor";
 import { getValueFromPath, pathToJSONPath } from "./utils/json";
-import { ColorTranslator } from "colortranslator";
 import * as path from "path";
-import { findHexColor } from "./utils/color";
+import {
+  findHexColorName,
+  mapCompleteToVScode,
+  vsCodeToHex,
+} from "./utils/color";
 
 /**
  * Icon definition provider
@@ -110,28 +113,17 @@ export const colorProvider = vscode.languages.registerColorProvider(
       let outputColor: string;
 
       // Convert the color to a hex string
-      outputColor = new ColorTranslator(
-        `rgba(${color.red * 255}, ${color.green * 255}, ${color.blue * 255}, ${
-          color.alpha
-        })`
-      ).HEXA;
-
-      console.log(`First output color: ${outputColor}`);
+      outputColor = vsCodeToHex(color);
 
       // If the color is fully opaque (AKA it ends with FF), we can remove the alpha channel
-      outputColor = outputColor.endsWith("FF")
+      outputColor = outputColor.endsWith("ff")
         ? outputColor.substring(0, 7)
         : outputColor;
-
-      console.log(`Output color after alpha check: ${outputColor}`);
-
       // See if we can find a color name
-      const colorName = findHexColor(outputColor);
+      const colorName = findHexColorName(outputColor);
       if (colorName) {
         outputColor = colorName.name;
       }
-
-      console.log(`Output color after color name check: ${outputColor}`);
 
       // If we have a pair like #AABBCC, we can shorten that to #ABC
       if (
@@ -142,7 +134,7 @@ export const colorProvider = vscode.languages.registerColorProvider(
         outputColor = `#${outputColor[1]}${outputColor[3]}${outputColor[5]}`;
       }
 
-      console.log(`Color after shortening: ${outputColor}`);
+      console.log("Output color from picker:", outputColor);
 
       return [
         {
@@ -182,25 +174,18 @@ export const colorProvider = vscode.languages.registerColorProvider(
           if (regex.exec(path)) {
             const colorValue = getValueFromPath(text, pathToJSONPath(path));
 
-            let colorRgba;
-            try {
-              colorRgba = new ColorTranslator(colorValue).RGBAObject;
-            } catch (error) {
-              console.error("Error translating color value:", error);
+            const colorOuput = mapCompleteToVScode(colorValue);
+
+            if (!colorOuput) {
               return;
             }
 
             console.log(
-              `Output color: ${colorRgba.R}, ${colorRgba.G}, ${colorRgba.B}, ${colorRgba.A}`
+              `Output color: ${colorOuput.red}, ${colorOuput.green}, ${colorOuput.blue}, ${colorOuput.alpha}`
             );
 
             colors.push({
-              color: new vscode.Color(
-                colorRgba.R / 255,
-                colorRgba.G / 255,
-                colorRgba.B / 255,
-                colorRgba.A ?? 1
-              ),
+              color: colorOuput,
               range: getStartEnd(text, pathToJSONPath(path)),
             });
           }

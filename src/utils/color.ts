@@ -2,6 +2,8 @@
  * Some utilities to works with colors, mainly color names
  */
 
+import { Color as vscodeColor } from "vscode";
+
 /**
  * Representation of a color, contains hex and rgb values
  */
@@ -34,9 +36,97 @@ interface Color {
 
 /**
  * Find a color by its hex value
+ *
+ * @param hex Hex color
+ * @returns Color object, if found
  */
-export function findHexColor(hex: string): Color | undefined {
+export function findHexColorName(hex: string): Color | undefined {
   return colors.find((color) => color.hex === hex.toLowerCase());
+}
+
+/**
+ * Find a color by its name
+ *
+ * @param name Color name
+ * @returns Color object, if found
+ */
+export function findHexColor(name: string): Color | undefined {
+  return colors.find((color) => color.name === name.toLowerCase());
+}
+
+/**
+ * Convert a VSCode color to a hex string
+ *
+ * @param color VSCode color
+ * @returns Hex representation of the color
+ */
+export function vsCodeToHex(color: vscodeColor): string {
+  const red = Math.round(color.red * 255)
+    .toString(16)
+    .padStart(2, "0");
+  const green = Math.round(color.green * 255)
+    .toString(16)
+    .padStart(2, "0");
+  const blue = Math.round(color.blue * 255)
+    .toString(16)
+    .padStart(2, "0");
+  const alpha = Math.round(color.alpha * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `#${red}${green}${blue}${alpha}`;
+}
+
+/**
+ * Convert a color from a MapComplete JSON to a VSCode color
+ *
+ * Supports HEX (3, 6 or 8 characters) and color names
+ *
+ * @param color Color from MapComplete JSON
+ */
+export function mapCompleteToVScode(color: string): vscodeColor | undefined {
+  // First check if we have a hex color
+  if (color.startsWith("#")) {
+    // Check if we have 3, 6 or 8 defined characters
+    switch (color.length) {
+      case 4:
+        return new vscodeColor(
+          parseInt(color[1] + color[1], 16) / 255,
+          parseInt(color[2] + color[2], 16) / 255,
+          parseInt(color[3] + color[3], 16) / 255,
+          1
+        );
+      case 7:
+        return new vscodeColor(
+          parseInt(color.substring(1, 2), 16) / 255,
+          parseInt(color.substring(3, 2), 16) / 255,
+          parseInt(color.substring(5, 2), 16) / 255,
+          1
+        );
+      case 9:
+        return new vscodeColor(
+          parseInt(color.substring(1, 2), 16) / 255,
+          parseInt(color.substring(3, 2), 16) / 255,
+          parseInt(color.substring(5, 2), 16) / 255,
+          parseInt(color.substring(7, 2), 16) / 255
+        );
+      default:
+        return undefined;
+    }
+  } else {
+    // Look for a color name
+    const namedColor = findHexColor(color);
+
+    if (namedColor) {
+      return new vscodeColor(
+        namedColor.r / 255,
+        namedColor.g / 255,
+        namedColor.b / 255,
+        1
+      );
+    } else {
+      return undefined;
+    }
+  }
 }
 
 /**
