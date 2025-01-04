@@ -89,15 +89,17 @@ export const iconDefinitionProvider =
  * - As a color name, like red
  *
  * JSON paths:
- * - (layers.{index}.)lineRendering.{index}.color
- * - (layers.{index}.)lineRendering.{index}.color.render
- * - (layers.{index}.)lineRendering.{index}.color.mappings.{index}.then
- * - (layers.{index}.)lineRendering.{index}.fillColor
- * - (layers.{index}.)lineRendering.{index}.fillColor.render
- * - (layers.{index}.)lineRendering.{index}.fillColor.mappings.{index}.then
- * - (layers.{index}.)pointRendering.{index}.marker.{index}.color
- * - (layers.{index}.)pointRendering.{index}.marker.{index}.color.render
- * - (layers.{index}.)pointRendering.{index}.marker.{index}.color.mappings.{index}.then
+ * - (layers.{index}(.override).)lineRendering.{index}.color
+ * - (layers.{index}(.override).)lineRendering.{index}.color.render
+ * - (layers.{index}(.override).)lineRendering.{index}.color.mappings.{index}.then
+ * - (layers.{index}(.override).)lineRendering.{index}.fillColor
+ * - (layers.{index}(.override).)lineRendering.{index}.fillColor.render
+ * - (layers.{index}(.override).)lineRendering.{index}.fillColor.mappings.{index}.then
+ * - (layers.{index}(.override).)pointRendering.{index}.marker.{index}.color
+ * - (layers.{index}(.override).)pointRendering.{index}.marker.{index}.color.render
+ * - (layers.{index}(.override).)pointRendering.{index}.marker.{index}.color.mappings.{index}.then
+ *
+ * In all cases (layers.{index}.) can also be replaced by overrideAll
  *
  */
 export const colorProvider = vscode.languages.registerColorProvider(
@@ -164,9 +166,9 @@ export const colorProvider = vscode.languages.registerColorProvider(
       findPaths(jsonParsed);
 
       const regexes = [
-        /^(layers.\d+.)?lineRendering.\d+.color((.render)|(.mappings.\d+.then))?$/,
-        /^(layers.\d+.)?lineRendering.\d+.fillColor((.render)|(.mappings.\d+.then))?$/,
-        /^(layers.\d+.)?pointRendering.\d+.marker.\d+.color((.render)|(.mappings.\d+.then))?$/,
+        /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?lineRendering\.\d+\.color((\.render)|(\.mappings\.\d+\.then))?$/,
+        /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?lineRendering.\d+.fillColor((.render)|(.mappings.\d+.then))?$/,
+        /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?pointRendering.\d+.marker.\d+.color((.render)|(.mappings.\d+.then))?$/,
       ];
 
       regexes.forEach((regex) => {

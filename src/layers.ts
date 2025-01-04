@@ -20,7 +20,9 @@ import { JSONPath } from "jsonc-parser";
  * This provider will provide a list of existing tagRenderings for autocompletion
  *
  * JSON path:
- * - (layers.{index}.)tagRenderings.{index}(.builtin)
+ * - (layers.{index}.(override).)tagRenderings.{index}(.builtin)
+ * - overrideAll.tagRenderings.{index}(.builtin)
+ * Also +/= characters around tagRenderings are supported
  */
 export const tagRenderingCompletionProvider =
   vscode.languages.registerCompletionItemProvider(
@@ -43,7 +45,9 @@ export const tagRenderingCompletionProvider =
         const text = document.getText();
         const jsonPath = getCursorPath(text, position);
 
-        const regex = /^(layers.\d+.)?tagRenderings\.\d+(.builtin)?$/;
+        // This technically also matches layers.1.tagRenderings+, and similar, but that's fine
+        const regex =
+          /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?tagRenderings(\+)?\.\d+(.builtin)?$/;
         if (regex.exec(jsonPath)) {
           const tagRenderings = await getTagRenderings();
           console.log(`Got ${tagRenderings.length} tagRenderings`);
@@ -63,7 +67,9 @@ export const tagRenderingCompletionProvider =
  * This provider will provide a definition for tagRenderings, allowing users to jump to the tagRendering definition
  *
  * JSON path:
- * - (layers.{index}.)tagRenderings.{index}(.builtin)
+ * - (layers.{index}.(override).)tagRenderings.{index}(.builtin)
+ * - overrideAll.tagRenderings.{index}(.builtin)
+ * Also +/= characters around tagRenderings are supported
  */
 export const tagRenderingDefinitionProvider =
   vscode.languages.registerDefinitionProvider(
@@ -82,7 +88,9 @@ export const tagRenderingDefinitionProvider =
         const jsonPath = getCursorPath(text, position);
         const rawJsonPath = getRawCursorPath(text, position);
 
-        const regex = /^(layers.\d.)?tagRenderings.\d*(.builtin)?$/;
+        // This technically also matches layers.1.tagRenderings+, and similar, but that's fine
+        const regex =
+          /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?tagRenderings(\+)?\.\d+(.builtin)?$/;
 
         if (regex.exec(jsonPath)) {
           const tagRendering = getValueFromPath(text, rawJsonPath);
@@ -171,6 +179,8 @@ export const tagRenderingDefinitionProvider =
  *
  * JSON path:
  * - (layers.{index}.)filter.{index}
+ * - overrideAll.filter.{index}
+ * Also +/= characters around filter are supported
  */
 export const filterCompletionProvider =
   vscode.languages.registerCompletionItemProvider(
@@ -195,7 +205,8 @@ export const filterCompletionProvider =
 
         console.log(jsonPath);
 
-        const regex = /^(layers.\d+.)?filter\.\d+$/;
+        const regex =
+          /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?filter(\+)?\.\d+$/;
         if (regex.exec(jsonPath)) {
           const filters = await getFilters();
           console.log(`Got ${filters.length} filters`);
@@ -216,6 +227,8 @@ export const filterCompletionProvider =
  *
  * JSON path:
  * - (layers.{index}.)filter.{index}
+ * - overrideAll.filter.{index}
+ * Also +/= characters around filter are supported
  */
 export const filterDefinitionProvider =
   vscode.languages.registerDefinitionProvider(
@@ -234,7 +247,8 @@ export const filterDefinitionProvider =
         const jsonPath = getCursorPath(text, position);
         const rawJsonPath = getRawCursorPath(text, position);
 
-        const regex = /^(layers.\d.)?filter.\d*$/;
+        const regex =
+          /^((layers\.\d+\.(override\.([+=])?)?)|(overrideAll\.))?filter(\+)?\.\d+$/;
 
         if (regex.exec(jsonPath)) {
           const filter = getValueFromPath(text, rawJsonPath);
