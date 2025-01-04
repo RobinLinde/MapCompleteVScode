@@ -10,12 +10,9 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import {
-  getAvailableLayers,
-  getCursorPath,
-  getRawCursorPath,
-  getValueFromPath,
-} from "./utils";
+import { getCursorPath, getRawCursorPath } from "./utils/cursor";
+import { getAvailableLayers } from "./utils/mapcomplete";
+import { getValueFromPath } from "./utils/json";
 
 /**
  * Layer completion provider

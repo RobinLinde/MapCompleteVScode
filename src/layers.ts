@@ -9,14 +9,9 @@
  */
 
 import * as vscode from "vscode";
-import {
-  getCursorPath,
-  getFilters,
-  getRawCursorPath,
-  getStartEnd,
-  getTagRenderings,
-  getValueFromPath,
-} from "./utils";
+import { getCursorPath, getRawCursorPath, getStartEnd } from "./utils/cursor";
+import { getFilters, getTagRenderings } from "./utils/mapcomplete";
+import { getValueFromPath } from "./utils/json";
 import { JSONPath } from "jsonc-parser";
 
 /**

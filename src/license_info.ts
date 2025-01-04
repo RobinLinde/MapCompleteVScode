@@ -8,12 +8,8 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import {
-  getCursorPath,
-  getRawCursorPath,
-  getStartEnd,
-  getValueFromPath,
-} from "./utils";
+import { getCursorPath, getRawCursorPath, getStartEnd } from "./utils/cursor";
+import { getValueFromPath } from "./utils/json";
 
 /**
  * Path definition provider
