@@ -3,15 +3,11 @@
  */
 
 import * as vscode from "vscode";
-import {
-  getCursorPath,
-  getRawCursorPath,
-  getStartEnd,
-  getValueFromPath,
-  pathToJSONPath,
-} from "./utils";
+import { getCursorPath, getRawCursorPath, getStartEnd } from "./utils/cursor";
+import { getValueFromPath, pathToJSONPath } from "./utils/json";
 import { ColorTranslator } from "colortranslator";
 import * as path from "path";
+import { findHexColor } from "./utils/color";
 
 /**
  * Icon definition provider
@@ -111,22 +107,46 @@ export const colorProvider = vscode.languages.registerColorProvider(
     provideColorPresentations(color, _context, _token) {
       console.log("colorProvider.provideColorPresentations");
 
-      const colorHex = new ColorTranslator(
+      let outputColor: string;
+
+      // Convert the color to a hex string
+      outputColor = new ColorTranslator(
         `rgba(${color.red * 255}, ${color.green * 255}, ${color.blue * 255}, ${
           color.alpha
         })`
       ).HEXA;
 
-      // If the color is fully opaque (AKA it ends with FF), we can remove the alpha channel
-      const colorHexString = colorHex.endsWith("FF")
-        ? colorHex.substring(0, 7)
-        : colorHex;
+      console.log(`First output color: ${outputColor}`);
 
-      // TODO: Add color names, maybe convert to short-hand hex
+      // If the color is fully opaque (AKA it ends with FF), we can remove the alpha channel
+      outputColor = outputColor.endsWith("FF")
+        ? outputColor.substring(0, 7)
+        : outputColor;
+
+      console.log(`Output color after alpha check: ${outputColor}`);
+
+      // See if we can find a color name
+      const colorName = findHexColor(outputColor);
+      if (colorName) {
+        outputColor = colorName.name;
+      }
+
+      console.log(`Output color after color name check: ${outputColor}`);
+
+      // If we have a pair like #AABBCC, we can shorten that to #ABC
+      if (
+        outputColor[1] === outputColor[2] &&
+        outputColor[3] === outputColor[4] &&
+        outputColor[5] === outputColor[6]
+      ) {
+        outputColor = `#${outputColor[1]}${outputColor[3]}${outputColor[5]}`;
+      }
+
+      console.log(`Color after shortening: ${outputColor}`);
 
       return [
         {
-          label: colorHexString,
+          label: outputColor,
         },
       ];
     },
