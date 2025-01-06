@@ -1,0 +1,11 @@
+.github/**
+.vscode/**
+
+src/**
+.gitignore
+**/tsconfig.json
+**/eslint.config.mjs
+**/.markdownlint.json
+**/*.map
+**/*.ts
+node_modules/**/*.md
