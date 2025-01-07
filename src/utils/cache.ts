@@ -10,6 +10,16 @@ import { JSONPath } from "jsonc-parser";
  */
 export class CacheWorker {
   /**
+   * The extension context
+   */
+  private readonly context: vscode.ExtensionContext;
+
+  /**
+   * List of cache items
+   */
+  private cache: CacheItem[] = [];
+
+  /**
    * Creates a new cache
    *
    * @param context The extension context
@@ -19,18 +29,25 @@ export class CacheWorker {
     context: vscode.ExtensionContext
   ): Promise<CacheWorker> {
     const cache = new CacheWorker(context);
-    await cache.initialize();
+    await cache.scanWorkspace();
     return cache;
   }
 
-  private async initialize() {
-    await this.scanWorkspace();
+  /**
+   * Create a new cache
+   *
+   * @param context The extension context
+   */
+  private constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+    // We probably want to create a fileSystemWatcher here
+    // to listen for changes in the workspace
+    this.createFileSystemWatcher();
   }
-  private readonly context: vscode.ExtensionContext;
-  private cache: CacheItem[] = [];
 
   /**
    * Saves the current cache to the storage as JSON
+   * TODO: Find a more elegant way to do this
    */
   private save() {
     const jsonString = JSON.stringify(this.cache);
@@ -42,18 +59,6 @@ export class CacheWorker {
     } else {
       console.error("No workspace folder found");
     }
-  }
-
-  /**
-   * Create a new cache
-   *
-   * @param context The extension context
-   */
-  constructor(context: vscode.ExtensionContext) {
-    this.context = context;
-    // We probably want to create a fileSystemWatcher here
-    // to listen for changes in the workspace
-    this.createFileSystemWatcher();
   }
 
   /**
@@ -161,15 +166,13 @@ export class CacheWorker {
 
     // Look through the layers
     for (const layer of json.layers) {
-      // Check if it is a string and not an object
+      // Reference if it's a string
       if (typeof layer === "string") {
         // It is a reference
         console.log(`Reference found to ${layer} in ${filePath}`);
 
         const from = `themes.${json.id}`;
-        const to = layer.includes(".")
-          ? `themes.${layer.split(".")[0]}layers.${layer.split(".")[1]}`
-          : `layers.${layer}`;
+        const to = `layers.${layer}`;
 
         this.cache.push({
           id: layer,
@@ -182,6 +185,55 @@ export class CacheWorker {
             type: "layer",
           },
         });
+      }
+      // Builtin layer if we have a builtin property
+      else if (layer.builtin) {
+        if (typeof layer.builtin === "string") {
+          // Single layer
+          console.log(`Reference found to ${layer.builtin} in ${filePath}`);
+
+          const from = `themes.${json.id}`;
+          const to = `layers.${layer.builtin}`;
+
+          this.cache.push({
+            id: layer.builtin,
+            filePath: uri,
+            jsonPath: ["layers"],
+            type: "reference",
+            reference: {
+              from,
+              to,
+              type: "layer",
+            },
+          });
+        } else {
+          // Multiple layers
+          for (const builtinLayer of layer.builtin) {
+            console.log(`Reference found to ${builtinLayer} in ${filePath}`);
+
+            const from = `themes.${json.id}`;
+            const to = `layers.${builtinLayer}`;
+
+            this.cache.push({
+              id: builtinLayer,
+              filePath: uri,
+              jsonPath: ["layers"],
+              type: "reference",
+              reference: {
+                from,
+                to,
+                type: "layer",
+              },
+            });
+          }
+        }
+      }
+      // Inline layer else
+      else {
+        console.log(`Found inline layer ${layer.id} in ${filePath}`);
+        const text = JSON.stringify(layer);
+        const from = `themes.${json.id}.layers.${layer.id}`;
+        this.saveLayerTextToCache(text, uri, from, true);
       }
     }
 
@@ -212,14 +264,26 @@ export class CacheWorker {
    * @param text The text of the layer
    * @param uri The URI of the layer file
    * @param from The theme or layer where the layer is from, e.g. layers.bicycle_rental or themes.cyclofix.layers.0
+   * @param referencesOnly Whether to only save references, or also the tagRenderings and filters. This is useful for inline layers, because their filters and tagRenderings can't be reused
    */
-  private saveLayerTextToCache(text: string, uri: vscode.Uri, from: string) {
+  private saveLayerTextToCache(
+    text: string,
+    uri: vscode.Uri,
+    from: string,
+    referencesOnly = false
+  ) {
     const filePath = uri.fsPath;
     console.log("Saving layer to cache", filePath);
     /**
      * For now, we only care about the tagRenderings and filters in the layer
      */
     const json = JSON.parse(text);
+
+    // Check if this layer doesn't have a special source, or uses a geoJson source
+    if (json.source === "special" || json.source.geoJson) {
+      console.log("Layer has a special source, only saving references");
+      referencesOnly = true;
+    }
 
     // Look through the tagRenderings, if the layer has any
     if (json.tagRenderings) {
@@ -247,14 +311,68 @@ export class CacheWorker {
             },
           });
         } else if (typeof tagRendering === "object") {
-          // This is a tagRendering, which can be reused
-          console.log(`TagRendering found in ${filePath}`);
-          this.cache.push({
-            id: `${json.id}.${tagRendering.id}`,
-            filePath: uri,
-            jsonPath: ["tagRenderings"],
-            type: "tagRendering",
-          });
+          // This is a tagRendering, or a reference to one
+          if (tagRendering.builtin) {
+            // This is a reference to a built-in tagRendering (or multiple ones)
+            if (typeof tagRendering.builtin === "string") {
+              // Single tagRendering
+              console.log(
+                `Reference found to ${tagRendering.builtin} in ${filePath}`
+              );
+
+              const to = tagRendering.builtin.includes(".")
+                ? `layers.${tagRendering.builtin.split(".")[0]}.tagRenderings.${
+                    tagRendering.builtin.split(".")[1]
+                  }`
+                : `layers.questions.tagRenderings.${tagRendering.builtin}`;
+
+              this.cache.push({
+                id: tagRendering.builtin,
+                filePath: uri,
+                jsonPath: ["tagRenderings"],
+                type: "reference",
+                reference: {
+                  from,
+                  to,
+                  type: "tagRendering",
+                },
+              });
+            } else {
+              // Multiple tagRenderings
+              for (const builtinTagRendering of tagRendering.builtin) {
+                console.log(
+                  `Reference found to ${builtinTagRendering} in ${filePath}`
+                );
+
+                const to = builtinTagRendering.includes(".")
+                  ? `layers.${
+                      builtinTagRendering.split(".")[0]
+                    }.tagRenderings.${builtinTagRendering.split(".")[1]}`
+                  : `layers.questions.tagRenderings.${builtinTagRendering}`;
+
+                this.cache.push({
+                  id: builtinTagRendering,
+                  filePath: uri,
+                  jsonPath: ["tagRenderings"],
+                  type: "reference",
+                  reference: {
+                    from,
+                    to,
+                    type: "tagRendering",
+                  },
+                });
+              }
+            }
+          } else if (!referencesOnly) {
+            // This is a tagRendering, which can be reused
+            console.log(`TagRendering found in ${filePath}`);
+            this.cache.push({
+              id: `${json.id}.${tagRendering.id}`,
+              filePath: uri,
+              jsonPath: ["tagRenderings"],
+              type: "tagRendering",
+            });
+          }
         }
       }
     } else {
@@ -283,7 +401,7 @@ export class CacheWorker {
               type: "filter",
             },
           });
-        } else if (typeof filter === "object") {
+        } else if (typeof filter === "object" && !referencesOnly) {
           // This is a filter, which can be reused
           console.log(`Filter found in ${filePath}`);
           this.cache.push({
@@ -304,6 +422,7 @@ export class CacheWorker {
 
   /**
    * Print the current cache state
+   * TODO: This probably needs to be removed at some point
    */
   public printCache() {
     console.log("Current cache state:", this.cache);
@@ -322,6 +441,10 @@ export class Cache {
     return cache;
   }
 
+  /**
+   * Load the cache from the .cache/cache.json file
+   * TODO: Find a more elegant way to do this
+   */
   private async loadCache() {
     // Get the cache from the .cache/cache.json file in the workspace folder
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
@@ -392,6 +515,11 @@ export class Cache {
   }
 }
 
+/**
+ * A cached item
+ * Can be a tagRendering or filter from a(n) (inline) layer
+ * Can also be a reference between files
+ */
 interface CacheItem {
   /**
    * Where the item is defined in the workspace
@@ -406,7 +534,7 @@ interface CacheItem {
   /**
    * What kind of item it is
    */
-  type: "tagRendering" | "filter" | "layer" | "reference";
+  type: "tagRendering" | "filter" | "reference";
 
   /**
    * The ID of the item

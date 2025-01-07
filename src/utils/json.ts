@@ -13,7 +13,6 @@ import { JSONPath, findNodeAtLocation, parseTree } from "jsonc-parser";
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getValueFromPath(json: string, path: JSONPath): any {
-  console.log("getValueFromPath", path);
   const rootNode = parseTree(json);
   if (!rootNode) {
     return undefined;
