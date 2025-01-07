@@ -90,24 +90,24 @@ export function mapCompleteToVScode(color: string): vscodeColor | undefined {
     switch (color.length) {
       case 4:
         return new vscodeColor(
-          parseInt(color[1] + color[1], 16) / 255,
-          parseInt(color[2] + color[2], 16) / 255,
-          parseInt(color[3] + color[3], 16) / 255,
+          parseInt(color.substring(1, 2), 16) / 255,
+          parseInt(color.substring(2, 3), 16) / 255,
+          parseInt(color.substring(3, 4), 16) / 255,
           1
         );
       case 7:
         return new vscodeColor(
-          parseInt(color.substring(1, 2), 16) / 255,
-          parseInt(color.substring(3, 2), 16) / 255,
-          parseInt(color.substring(5, 2), 16) / 255,
+          parseInt(color.substring(1, 3), 16) / 255,
+          parseInt(color.substring(3, 5), 16) / 255,
+          parseInt(color.substring(5, 7), 16) / 255,
           1
         );
       case 9:
         return new vscodeColor(
-          parseInt(color.substring(1, 2), 16) / 255,
-          parseInt(color.substring(3, 2), 16) / 255,
-          parseInt(color.substring(5, 2), 16) / 255,
-          parseInt(color.substring(7, 2), 16) / 255
+          parseInt(color.substring(1, 3), 16) / 255,
+          parseInt(color.substring(3, 5), 16) / 255,
+          parseInt(color.substring(5, 7), 16) / 255,
+          parseInt(color.substring(7, 9), 16) / 255
         );
       default:
         return undefined;

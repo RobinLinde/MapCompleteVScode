@@ -1,7 +1,7 @@
 {
   "name": "mapcompletevscode",
   "displayName": "MapComplete VScode",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "robin-van-der-linde",
   "author": {
     "name": "Robin van der Linde",
@@ -45,7 +45,7 @@
     "@types/vscode": "^1.73.0",
     "eslint": "^9.13.0",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.16.0"
+    "typescript-eslint": "^8.19.1"
   },
   "dependencies": {
     "jsonc-parser": "^3.3.1"
