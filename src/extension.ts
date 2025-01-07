@@ -6,6 +6,7 @@ import {
   filterDefinitionProvider,
   tagRenderingCompletionProvider,
   tagRenderingDefinitionProvider,
+  tagRenderingImplementationProvider,
 } from "./layers";
 import { pathDefinitionProvider } from "./license_info";
 import { CacheWorker } from "./utils/cache";
@@ -19,7 +20,8 @@ export async function activate(context: vscode.ExtensionContext) {
     tagRenderingCompletionProvider,
     tagRenderingDefinitionProvider,
     filterCompletionProvider,
-    filterDefinitionProvider
+    filterDefinitionProvider,
+    tagRenderingImplementationProvider
   );
 
   // Activate all license info related features

@@ -280,7 +280,7 @@ export class CacheWorker {
     const json = JSON.parse(text);
 
     // Check if this layer doesn't have a special source, or uses a geoJson source
-    if (json.source === "special" || json.source.geoJson) {
+    if (json.source === "special" || json.source?.geoJson) {
       console.log("Layer has a special source, only saving references");
       referencesOnly = true;
     }
@@ -453,7 +453,6 @@ export class Cache {
       const cache = await vscode.workspace.fs.readFile(cacheUri);
       const cacheString = new TextDecoder().decode(cache);
       this.cache = JSON.parse(cacheString);
-      console.log(`Cache loaded, ${this.cache.length} items`);
     } else {
       console.error("No workspace folder found");
       throw new Error("No workspace folder found");
@@ -512,6 +511,21 @@ export class Cache {
       }
     }
     return filters;
+  }
+
+  /**
+   * Get all references to a specific item
+   *
+   * @param to Item to get references for (e.g. layers.bicycle_rental)
+   * @returns List of references
+   */
+  public getReferences(to: string): CacheItem[] {
+    return this.cache.filter((item) => {
+      if (item.type === "reference") {
+        return item.reference?.to === to;
+      }
+      return false;
+    });
   }
 }
 
