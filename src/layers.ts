@@ -205,105 +205,27 @@ export const tagRenderingImplementationProvider =
             if (references.length === 0) {
               return null;
             } else {
-              // TODO: This is way too much to be executing at this time, most of this should be cached
-              // TODO: Also, this seems to fail for the first time, but work for every subsequent time
               console.log(`Found ${references.length} references to ${to}`);
 
               const links: vscode.DefinitionLink[] = [];
               for (const reference of references) {
-                const originType = reference.reference?.from.split(".")[0];
-                const originName = reference.reference?.from.split(".")[1];
-
-                // We need to open the file where the reference is located
-                const originFile = await vscode.workspace.findFiles(
-                  `assets/${originType}/${originName}/${originName}.json`
-                );
-                if (originFile.length === 0) {
-                  continue;
-                }
-
-                const originText = await vscode.workspace.fs.readFile(
-                  originFile[0]
-                );
-                const originTextString = new TextDecoder().decode(originText);
-                const origin = JSON.parse(originTextString);
-
-                let tagRenderings: unknown[] = [];
-                let tagRenderingsPath: JSONPath = [];
-
-                // Now we'll need to find the tagRenderings object, and its path
-                if (originType === "themes") {
-                  const parts = reference.reference?.from.split(".");
-                  if (!parts) {
-                    continue;
-                  } else {
-                    console.log("Parts", parts);
-                    // Now we need to find the correct inline layer
-                    const layerIndex = origin.layers.findIndex(
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (layer: any) => layer.id === parts[3]
-                    );
-
-                    const path: JSONPath = [
-                      parts[2],
-                      layerIndex,
-                      ...reference.jsonPath,
-                    ];
-
-                    console.log("Trying to get tagRenderings from theme", path);
-
-                    const tagRenderingsFromOrigin = getValueFromPath(
-                      originTextString,
-                      path
-                    );
-                    if (!tagRenderingsFromOrigin) {
-                      console.error(
-                        "Could not find tagRenderings in theme",
-                        originName
-                      );
-                      continue;
-                    } else {
-                      // Yaay, we found the tagRenderings
-                      console.log("Found tagRenderings in theme", originName);
-                      tagRenderings = tagRenderingsFromOrigin as unknown[];
-                      tagRenderingsPath = path;
-                    }
-                  }
-                } else if (originType === "layers") {
-                  tagRenderings = origin.tagRenderings;
-                  tagRenderingsPath = ["tagRenderings"];
-                }
-
-                // The index is actually a really complicated, because a reference could be a string or an object with a builtin property, which can be a string or a list of strings
-                // Also if the reference is from an inline layer
-                const tagRenderingIndex = tagRenderings.findIndex(
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (tr: any) => {
-                    if (typeof tr === "string") {
-                      return tr === reference.id;
-                    } else if (typeof tr.builtin === "string") {
-                      return tr.builtin === reference.id;
-                    }
-                    // } else if (tr.builtin) {
-                    //   return tr.builtin.includes(reference.id);
-                    // }
-                  }
-                );
-                const path: JSONPath = [
-                  ...tagRenderingsPath,
-                  tagRenderingIndex,
-                ];
-                const startEnd = getStartEnd(originTextString, path);
-
                 console.log(
-                  `Pushing link from ${document.fileName} to ${originFile[0].path} at ${startEnd.start.line}.${startEnd.start.character} to ${startEnd.end.line}.${startEnd.end.character}`
+                  `Pushing link from ${document.fileName} to ${reference.reference?.to.uri?.fsPath} at ${reference.reference?.to.range?.start.line}.${reference.reference?.to.range?.start.character} to ${reference.reference?.to.range?.end.line}.${reference.reference?.to.range?.end.character}`
                 );
 
-                links.push({
-                  originSelectionRange: getStartEnd(text, rawJsonPath),
-                  targetRange: startEnd,
-                  targetUri: originFile[0],
-                });
+                // Check if we have a targetRange and targetUri
+                if (
+                  reference.reference?.to.range &&
+                  reference.reference?.to.uri
+                ) {
+                  links.push({
+                    originSelectionRange: reference.reference?.from.range,
+                    targetRange: reference.reference?.to.range,
+                    targetUri: reference.reference?.to.uri,
+                  });
+                } else {
+                  console.error("Incomplete reference", reference);
+                }
               }
               console.log(`Found ${links.length} implementations`);
               return links;

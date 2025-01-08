@@ -4,6 +4,7 @@
 
 import * as vscode from "vscode";
 import { JSONPath } from "jsonc-parser";
+import { getStartEnd } from "./cursor";
 
 /**
  * Worker class to handle the cache creation and updates
@@ -164,15 +165,24 @@ export class CacheWorker {
     const text = new TextDecoder().decode(await content);
     const json = JSON.parse(text);
 
+    // Determine some locations
+    const from = `themes.${json.id}`;
+    const fromFile = uri;
+
     // Look through the layers
     for (const layer of json.layers) {
+      const layerIndex = json.layers.indexOf(layer);
+
       // Reference if it's a string
       if (typeof layer === "string") {
         // It is a reference
         console.log(`Reference found to ${layer} in ${filePath}`);
 
-        const from = `themes.${json.id}`;
+        const fromStartEnd = getStartEnd(text, ["layers", layerIndex]);
         const to = `layers.${layer}`;
+        const toFile = await vscode.workspace.findFiles(
+          `**/assets/layers/${layer}/${layer}.json`
+        );
 
         this.cache.push({
           id: layer,
@@ -180,8 +190,15 @@ export class CacheWorker {
           jsonPath: ["layers"],
           type: "reference",
           reference: {
-            from,
-            to,
+            from: {
+              id: from,
+              uri: fromFile,
+              range: fromStartEnd,
+            },
+            to: {
+              id: to,
+              uri: toFile[0],
+            },
             type: "layer",
           },
         });
@@ -192,8 +209,15 @@ export class CacheWorker {
           // Single layer
           console.log(`Reference found to ${layer.builtin} in ${filePath}`);
 
-          const from = `themes.${json.id}`;
+          const fromStartEnd = getStartEnd(text, [
+            "layers",
+            layerIndex,
+            "builtin",
+          ]);
           const to = `layers.${layer.builtin}`;
+          const toFile = await vscode.workspace.findFiles(
+            `**/assets/layers/${layer.builtin}/${layer.builtin}.json`
+          );
 
           this.cache.push({
             id: layer.builtin,
@@ -201,8 +225,15 @@ export class CacheWorker {
             jsonPath: ["layers"],
             type: "reference",
             reference: {
-              from,
-              to,
+              from: {
+                id: from,
+                uri: fromFile,
+                range: fromStartEnd,
+              },
+              to: {
+                id: to,
+                uri: toFile[0],
+              },
               type: "layer",
             },
           });
@@ -211,8 +242,17 @@ export class CacheWorker {
           for (const builtinLayer of layer.builtin) {
             console.log(`Reference found to ${builtinLayer} in ${filePath}`);
 
-            const from = `themes.${json.id}`;
+            const builtinLayerIndex = layer.builtin.indexOf(builtinLayer);
+            const fromStartEnd = getStartEnd(text, [
+              "layers",
+              layerIndex,
+              "builtin",
+              builtinLayerIndex,
+            ]);
             const to = `layers.${builtinLayer}`;
+            const toFile = await vscode.workspace.findFiles(
+              `**/assets/layers/${builtinLayer}/${builtinLayer}.json`
+            );
 
             this.cache.push({
               id: builtinLayer,
@@ -220,8 +260,15 @@ export class CacheWorker {
               jsonPath: ["layers"],
               type: "reference",
               reference: {
-                from,
-                to,
+                from: {
+                  id: from,
+                  uri: fromFile,
+                  range: fromStartEnd,
+                },
+                to: {
+                  id: to,
+                  uri: toFile[0],
+                },
                 type: "layer",
               },
             });
@@ -231,9 +278,9 @@ export class CacheWorker {
       // Inline layer else
       else {
         console.log(`Found inline layer ${layer.id} in ${filePath}`);
-        const text = JSON.stringify(layer);
+        const layerText = JSON.stringify(layer);
         const from = `themes.${json.id}.layers.${layer.id}`;
-        this.saveLayerTextToCache(text, uri, from, true);
+        await this.saveLayerTextToCache(layerText, uri, from, true, text);
       }
     }
 
@@ -255,22 +302,24 @@ export class CacheWorker {
     const uriFileName = uriPathSplit[uriPathSplit.length - 1];
     const from = `layers.${uriFileName.split(".")[0]}`;
 
-    this.saveLayerTextToCache(text, uri, from);
+    await this.saveLayerTextToCache(text, uri, from);
   }
 
   /**
    * Save a layer to the cache, given the text of the layer
    *
-   * @param text The text of the layer
+   * @param text Text representation of layer
    * @param uri The URI of the layer file
    * @param from The theme or layer where the layer is from, e.g. layers.bicycle_rental or themes.cyclofix.layers.0
    * @param referencesOnly Whether to only save references, or also the tagRenderings and filters. This is useful for inline layers, because their filters and tagRenderings can't be reused
+   * @param fullFileText The full text of the original theme file, used for calculating position
    */
-  private saveLayerTextToCache(
+  private async saveLayerTextToCache(
     text: string,
     uri: vscode.Uri,
     from: string,
-    referencesOnly = false
+    referencesOnly = false,
+    fullFileText?: string
   ) {
     const filePath = uri.fsPath;
     console.log("Saving layer to cache", filePath);
@@ -287,93 +336,16 @@ export class CacheWorker {
 
     // Look through the tagRenderings, if the layer has any
     if (json.tagRenderings) {
-      for (const tagRendering of json.tagRenderings) {
-        // Check if it is a string and not an object
-        if (typeof tagRendering === "string") {
-          // It is a reference
-          console.log(`Reference found to ${tagRendering} in ${filePath}`);
-
-          const to = tagRendering.includes(".")
-            ? `layers.${tagRendering.split(".")[0]}.tagRenderings.${
-                tagRendering.split(".")[1]
-              }`
-            : `layers.questions.tagRenderings.${tagRendering}`;
-
-          this.cache.push({
-            id: tagRendering,
-            filePath: uri,
-            jsonPath: ["tagRenderings"],
-            type: "reference",
-            reference: {
-              from,
-              to,
-              type: "tagRendering",
-            },
-          });
-        } else if (typeof tagRendering === "object") {
-          // This is a tagRendering, or a reference to one
-          if (tagRendering.builtin) {
-            // This is a reference to a built-in tagRendering (or multiple ones)
-            if (typeof tagRendering.builtin === "string") {
-              // Single tagRendering
-              console.log(
-                `Reference found to ${tagRendering.builtin} in ${filePath}`
-              );
-
-              const to = tagRendering.builtin.includes(".")
-                ? `layers.${tagRendering.builtin.split(".")[0]}.tagRenderings.${
-                    tagRendering.builtin.split(".")[1]
-                  }`
-                : `layers.questions.tagRenderings.${tagRendering.builtin}`;
-
-              this.cache.push({
-                id: tagRendering.builtin,
-                filePath: uri,
-                jsonPath: ["tagRenderings"],
-                type: "reference",
-                reference: {
-                  from,
-                  to,
-                  type: "tagRendering",
-                },
-              });
-            } else {
-              // Multiple tagRenderings
-              for (const builtinTagRendering of tagRendering.builtin) {
-                console.log(
-                  `Reference found to ${builtinTagRendering} in ${filePath}`
-                );
-
-                const to = builtinTagRendering.includes(".")
-                  ? `layers.${
-                      builtinTagRendering.split(".")[0]
-                    }.tagRenderings.${builtinTagRendering.split(".")[1]}`
-                  : `layers.questions.tagRenderings.${builtinTagRendering}`;
-
-                this.cache.push({
-                  id: builtinTagRendering,
-                  filePath: uri,
-                  jsonPath: ["tagRenderings"],
-                  type: "reference",
-                  reference: {
-                    from,
-                    to,
-                    type: "tagRendering",
-                  },
-                });
-              }
-            }
-          } else if (!referencesOnly) {
-            // This is a tagRendering, which can be reused
-            console.log(`TagRendering found in ${filePath}`);
-            this.cache.push({
-              id: `${json.id}.${tagRendering.id}`,
-              filePath: uri,
-              jsonPath: ["tagRenderings"],
-              type: "tagRendering",
-            });
-          }
-        }
+      try {
+        await this.saveTagRenderingsToCache(
+          text,
+          from,
+          uri,
+          referencesOnly,
+          fullFileText
+        );
+      } catch (error) {
+        console.error(`Error saving tagRenderings for ${from}`, error);
       }
     } else {
       console.log("No tagRenderings found in", filePath);
@@ -381,36 +353,16 @@ export class CacheWorker {
 
     if (json.filter) {
       // Look through the filters
-      for (const filter of json.filter) {
-        // Check if it is a string and not an object
-        if (typeof filter === "string") {
-          // It is a reference
-          console.log(`Reference found to ${filter} in ${filePath}`);
-
-          const from = `layers.${json.id}`;
-          const to = `layers.${filter}`;
-
-          this.cache.push({
-            id: filter,
-            filePath: uri,
-            jsonPath: ["filters"],
-            type: "reference",
-            reference: {
-              from,
-              to,
-              type: "filter",
-            },
-          });
-        } else if (typeof filter === "object" && !referencesOnly) {
-          // This is a filter, which can be reused
-          console.log(`Filter found in ${filePath}`);
-          this.cache.push({
-            id: `${json.id}.${filter.id}`,
-            filePath: uri,
-            jsonPath: ["filters"],
-            type: "filter",
-          });
-        }
+      try {
+        await this.saveFiltersToCache(
+          text,
+          from,
+          uri,
+          referencesOnly,
+          fullFileText
+        );
+      } catch (error) {
+        console.error(`Error saving filters for ${from}`, error);
       }
     } else {
       console.log("No filters found in", filePath);
@@ -418,6 +370,305 @@ export class CacheWorker {
 
     this.save();
     this.printCache();
+  }
+
+  private async saveTagRenderingsToCache(
+    text: string,
+    from: string,
+    fromUri: vscode.Uri,
+    referencesOnly = false,
+    fullFileText?: string
+  ) {
+    const json = JSON.parse(text);
+
+    for (const tagRendering of json.tagRenderings) {
+      // Check if it is a string and not an object
+      if (typeof tagRendering === "string") {
+        // It is a reference
+        console.log(
+          `Reference found to tagRendering ${tagRendering} in ${from}`
+        );
+
+        // The range is dependent on whether we're dealing with a full file or not
+        // const fromStartEnd = fullFileText
+        //   ? getStartEnd(fullFileText, [
+        //       ...from.split("."),
+        //       "",
+        //       filterReferenceIndex,
+        //     ])
+        //   : getStartEnd(text, ["filter", filterReferenceIndex]);
+
+        // The range depends on whether we're dealing with a full file or not
+        // const fromStartEnd = fullFileText
+        //   ? getStartEnd(fullFileText, [
+        //       ...from.split("."),
+        //       "tagRenderings",
+        //       json.tagRenderings.indexOf(tagRendering),
+        //     ])
+        //   : getStartEnd(text, [
+        //       "tagRenderings",
+        //       json.tagRenderings.indexOf(tagRendering),
+        //     ]);
+
+        // const to = tagRendering.includes(".")
+        //   ? `layers.${tagRendering.split(".")[0]}.tagRenderings.${
+        //       tagRendering.split(".")[1]
+        //     }`
+        //   : `layers.questions.tagRenderings.${tagRendering}`;
+        // const toFile = await vscode.workspace.findFiles(
+        //   `**/assets/layers/${to.split("."[1])}/${to.split(".")[1]}.json`
+        // );
+        // // Read toFile and get the text
+        // const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+        // const toText = new TextDecoder().decode(toContent);
+        // const toJson = JSON.parse(toText);
+        // const trIndex = toJson.tagRenderings.findIndex(
+        //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        //   (tr: any) => tr.id === tagRendering.split(".")?.pop()
+        // );
+        // const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+        // this.cache.push({
+        //   id: tagRendering,
+        //   filePath: fromUri,
+        //   jsonPath: ["tagRenderings"],
+        //   type: "reference",
+        //   reference: {
+        //     from: {
+        //       id: from,
+        //       uri: fromUri,
+        //       range: fromStartEnd,
+        //     },
+        //     to: {
+        //       id: to,
+        //       uri: toFile[0],
+        //       range: toRange,
+        //     },
+        //     type: "tagRendering",
+        //   },
+        // });
+      }
+      // } else if (typeof tagRendering === "object") {
+      //   // This is a tagRendering, or a reference to one
+      //   if (tagRendering.builtin) {
+      //     // This is a reference to a built-in tagRendering (or multiple ones)
+      //     if (typeof tagRendering.builtin === "string") {
+      //       // Single tagRendering
+      //       console.log(
+      //         `Reference found to ${tagRendering.builtin} in ${from}`
+      //       );
+
+      //       // The range depends on whether we're dealing with a full file or not
+      //       const fromStartEnd = fullFileText
+      //         ? getStartEnd(fullFileText, [
+      //             ...from.split("."),
+      //             "tagRenderings",
+      //             json.tagRenderings.indexOf(tagRendering),
+      //           ])
+      //         : getStartEnd(text, [
+      //             "tagRenderings",
+      //             json.tagRenderings.indexOf(tagRendering),
+      //           ]);
+
+      //       const to = tagRendering.builtin.includes(".")
+      //         ? `layers.${tagRendering.builtin.split(".")[0]}.tagRenderings.${
+      //             tagRendering.builtin.split(".")[1]
+      //           }`
+      //         : `layers.questions.tagRenderings.${tagRendering.builtin}`;
+      //       const toFile = await vscode.workspace.findFiles(
+      //         `**/assets/layers/${to.split("."[1])}/${to.split(".")[1]}.json`
+      //       );
+      //       // Read toFile and get the text
+      //       const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+      //       const toText = new TextDecoder().decode(toContent);
+      //       const toJson = JSON.parse(toText);
+      //       const trIndex = toJson.tagRenderings.findIndex(
+      //         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      //         (tr: any) => tr.id === tagRendering.builtin.split(".")?.pop()
+      //       );
+      //       const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+      //       this.cache.push({
+      //         id: tagRendering.builtin,
+      //         filePath: fromUri,
+      //         jsonPath: ["tagRenderings"],
+      //         type: "reference",
+      //         reference: {
+      //           from: {
+      //             id: from,
+      //             uri: fromUri,
+      //             range: fromStartEnd,
+      //           },
+      //           to: {
+      //             id: to,
+      //             uri: toFile[0],
+      //             range: toRange,
+      //           },
+      //           type: "tagRendering",
+      //         },
+      //       });
+      //     } else {
+      //       // Multiple tagRenderings
+      //       for (const builtinTagRendering of tagRendering.builtin) {
+      //         console.log(
+      //           `Reference found to ${builtinTagRendering} in ${from}`
+      //         );
+
+      //         // The range depends on whether we're dealing with a full file or not
+      //         const fromStartEnd = fullFileText
+      //           ? getStartEnd(fullFileText, [
+      //               ...from.split("."),
+      //               "tagRenderings",
+      //               json.tagRenderings.indexOf(tagRendering),
+      //             ])
+      //           : getStartEnd(text, [
+      //               "tagRenderings",
+      //               json.tagRenderings.indexOf(tagRendering),
+      //             ]);
+
+      //         const to = builtinTagRendering.includes(".")
+      //           ? `layers.${builtinTagRendering.split(".")[0]}.tagRenderings.${
+      //               builtinTagRendering.split(".")[1]
+      //             }`
+      //           : `layers.questions.tagRenderings.${builtinTagRendering}`;
+      //         const toFile = await vscode.workspace.findFiles(
+      //           `**/assets/layers/${to.split("."[1])}/${to.split(".")[1]}.json`
+      //         );
+      //         // Read toFile and get the text
+      //         const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+      //         const toText = new TextDecoder().decode(toContent);
+      //         const toJson = JSON.parse(toText);
+      //         const trIndex = toJson.tagRenderings.findIndex(
+      //           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      //           (tr: any) => tr.id === builtinTagRendering.split(".")?.pop()
+      //         );
+      //         const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+      //         this.cache.push({
+      //           id: builtinTagRendering,
+      //           filePath: fromUri,
+      //           jsonPath: ["tagRenderings"],
+      //           type: "reference",
+      //           reference: {
+      //             from: {
+      //               id: from,
+      //               uri: fromUri,
+      //               range: fromStartEnd,
+      //             },
+      //             to: {
+      //               id: to,
+      //               uri: toFile[0],
+      //               range: toRange,
+      //             },
+      //             type: "tagRendering",
+      //           },
+      //         });
+      //       }
+      //     }
+      //   } else if (!referencesOnly) {
+      //     // This is a tagRendering, which can be reused
+      //     console.log(`TagRendering found in ${from}`);
+      //     this.cache.push({
+      //       id: `${json.id}.${tagRendering.id}`,
+      //       filePath: fromUri,
+      //       jsonPath: ["tagRenderings"],
+      //       type: "tagRendering",
+      //     });
+      //   }
+    }
+  }
+
+  /**
+   * Save filters to cache
+   *
+   * @param text Text representation of layer
+   * @param from The theme or layer where the layer is from, e.g. layers.bicycle_rental or themes.cyclofix.layers.0
+   * @param fromUri URI of the layer file
+   * @param referencesOnly Whether to only save references, or also the tagRenderings and filters. This is useful for inline layers, because their filters and tagRenderings can't be reused
+   * @param fullFileText The full text of the original theme file, used for calculating position
+   */
+  private async saveFiltersToCache(
+    text: string,
+    from: string,
+    fromUri: vscode.Uri,
+    referencesOnly = false,
+    fullFileText?: string
+  ) {
+    const json = JSON.parse(text);
+
+    for (const filter of json.filter) {
+      const filterReferenceIndex = json.filter.indexOf(filter);
+
+      // Check if it is a string and not an object
+      if (typeof filter === "string") {
+        // It is a reference
+        console.log(`Reference found to filter ${filter} in ${from}`);
+
+        // The range is dependent on whether we're dealing with a full file or not
+        const fromStartEnd = fullFileText
+          ? getStartEnd(fullFileText, [
+              ...from.split("."),
+              "filter",
+              filterReferenceIndex,
+            ])
+          : getStartEnd(text, ["filter", filterReferenceIndex]);
+
+        const filterId = filter.includes(".") ? filter.split(".")[1] : filter;
+        const to = filter.includes(".")
+          ? `layers.${filter.split(".")[0]}`
+          : `layers.filters`;
+        // Now we'll need to determine what file we need to look in
+        const toFileName = filter.includes(".")
+          ? `**/assets/layers/${filter.split(".")[0]}/${
+              filter.split(".")[0]
+            }.json`
+          : `**/assets/layers/filters/filters.json`;
+        const toFile = await vscode.workspace.findFiles(toFileName);
+
+        const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+        const toText = new TextDecoder().decode(toContent);
+        const toJson = JSON.parse(toText);
+        const toFilterIndex = toJson.filter.findIndex(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (f: any) => f.id === filterId
+        );
+
+        if (toFilterIndex === -1) {
+          console.error(`Filter ${filter} not found`);
+          continue;
+        }
+        const toRange = getStartEnd(toText, ["filter", toFilterIndex]);
+
+        this.cache.push({
+          id: filter,
+          filePath: fromUri,
+          jsonPath: ["filters"],
+          type: "reference",
+          reference: {
+            from: {
+              id: from,
+              uri: fromUri,
+              range: fromStartEnd,
+            },
+            to: {
+              id: to,
+              uri: toFile[0],
+              range: toRange,
+            },
+            type: "filter",
+          },
+        });
+      } else if (typeof filter === "object" && !referencesOnly) {
+        // This is a filter, which can be reused
+        console.log(`Filter found in ${from}`);
+        this.cache.push({
+          id: `${json.id}.${filter.id}`,
+          filePath: fromUri,
+          jsonPath: ["filters"],
+          type: "filter",
+        });
+      }
+    }
   }
 
   /**
@@ -522,7 +773,7 @@ export class Cache {
   public getReferences(to: string): CacheItem[] {
     return this.cache.filter((item) => {
       if (item.type === "reference") {
-        return item.reference?.to === to;
+        return item.reference?.to.id === to;
       }
       return false;
     });
@@ -570,23 +821,41 @@ interface CacheItem {
  */
 interface Reference {
   /**
-   * The theme or layer where the reference is from
-   *
-   * @example themes.cyclofix
+   * The place where the item is being used (eg. themes.cyclofix)
    */
-  from: string;
+  from: ReferenceDetail;
 
   /**
-   * The path of the file where the reference points to
-   * This can also be more specific, like a tagRendering or filter
-   *
-   * @example layers.bicycle_rental
-   * @example layers.questions.tagRenderings.name
+   * The place where the item is defined (eg. layers.bicycle_rental)
    */
-  to: string;
+  to: ReferenceDetail;
 
   /**
    * The type of item being referenced/reused
    */
   type: "tagRendering" | "filter" | "layer";
+}
+
+interface ReferenceDetail {
+  /**
+   * The path of the file for this side of the reference
+   *
+   * @example layers.bicycle_rental
+   * @example layers.questions.tagRenderings.name
+   * @example themes.cyclofix
+   */
+  id: string;
+
+  /**
+   * The URI of the file for this side of the reference
+   */
+  uri?: vscode.Uri;
+
+  /**
+   * The range of the reference in the file
+   * Useful for highlighting the reference in the file
+   *
+   * Only defined when referencing to a part of a file
+   */
+  range?: vscode.Range;
 }
