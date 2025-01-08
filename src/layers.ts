@@ -210,18 +210,26 @@ export const tagRenderingImplementationProvider =
               const links: vscode.DefinitionLink[] = [];
               for (const reference of references) {
                 console.log(
-                  `Pushing link from ${document.fileName} to ${reference.reference?.to.uri?.fsPath} at ${reference.reference?.to.range?.start.line}.${reference.reference?.to.range?.start.character} to ${reference.reference?.to.range?.end.line}.${reference.reference?.to.range?.end.character}`
+                  `Pushing link from ${document.fileName} to ${reference.reference?.from.uri?.fsPath} at ${reference.reference?.to.range?.[0]?.line}:${reference.reference?.to.range?.[0]?.character}`,
+                  reference
                 );
 
-                // Check if we have a targetRange and targetUri
-                if (
-                  reference.reference?.to.range &&
-                  reference.reference?.to.uri
-                ) {
+                // Check if we have a targetUri
+                if (reference.reference?.from.uri) {
                   links.push({
-                    originSelectionRange: reference.reference?.from.range,
-                    targetRange: reference.reference?.to.range,
-                    targetUri: reference.reference?.to.uri,
+                    originSelectionRange: new vscode.Range(
+                      reference.reference?.to?.range?.[0]?.line ?? 0,
+                      reference.reference?.to?.range?.[0]?.character ?? 0,
+                      reference.reference?.to?.range?.[1]?.line ?? 0,
+                      reference.reference?.to?.range?.[1]?.character ?? 0
+                    ),
+                    targetRange: new vscode.Range(
+                      reference.reference?.from?.range?.[0]?.line ?? 0,
+                      reference.reference?.from?.range?.[0]?.character ?? 0,
+                      reference.reference?.from?.range?.[1]?.line ?? 0,
+                      reference.reference?.from?.range?.[1]?.character ?? 0
+                    ),
+                    targetUri: reference.reference?.from?.uri,
                   });
                 } else {
                   console.error("Incomplete reference", reference);

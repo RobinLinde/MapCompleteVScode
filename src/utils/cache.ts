@@ -176,7 +176,7 @@ export class CacheWorker {
       // Reference if it's a string
       if (typeof layer === "string") {
         // It is a reference
-        console.log(`Reference found to ${layer} in ${filePath}`);
+        console.log(`Reference found to layer ${layer} in ${filePath}`);
 
         const fromStartEnd = getStartEnd(text, ["layers", layerIndex]);
         const to = `layers.${layer}`;
@@ -193,7 +193,7 @@ export class CacheWorker {
             from: {
               id: from,
               uri: fromFile,
-              range: fromStartEnd,
+              range: [fromStartEnd.start, fromStartEnd.end],
             },
             to: {
               id: to,
@@ -207,7 +207,9 @@ export class CacheWorker {
       else if (layer.builtin) {
         if (typeof layer.builtin === "string") {
           // Single layer
-          console.log(`Reference found to ${layer.builtin} in ${filePath}`);
+          console.log(
+            `Reference found to builtin layer ${layer.builtin} in ${filePath}`
+          );
 
           const fromStartEnd = getStartEnd(text, [
             "layers",
@@ -228,7 +230,7 @@ export class CacheWorker {
               from: {
                 id: from,
                 uri: fromFile,
-                range: fromStartEnd,
+                range: [fromStartEnd.start, fromStartEnd.end],
               },
               to: {
                 id: to,
@@ -240,7 +242,9 @@ export class CacheWorker {
         } else {
           // Multiple layers
           for (const builtinLayer of layer.builtin) {
-            console.log(`Reference found to ${builtinLayer} in ${filePath}`);
+            console.log(
+              `Reference found to builtin layer ${builtinLayer} in ${filePath}`
+            );
 
             const builtinLayerIndex = layer.builtin.indexOf(builtinLayer);
             const fromStartEnd = getStartEnd(text, [
@@ -263,7 +267,7 @@ export class CacheWorker {
                 from: {
                   id: from,
                   uri: fromFile,
-                  range: fromStartEnd,
+                  range: [fromStartEnd.start, fromStartEnd.end],
                 },
                 to: {
                   id: to,
@@ -279,7 +283,7 @@ export class CacheWorker {
       else {
         console.log(`Found inline layer ${layer.id} in ${filePath}`);
         const layerText = JSON.stringify(layer);
-        const from = `themes.${json.id}.layers.${layer.id}`;
+        const from = `themes.${json.id}.layers.${layerIndex}`;
         await this.saveLayerTextToCache(layerText, uri, from, true, text);
       }
     }
@@ -294,6 +298,10 @@ export class CacheWorker {
    * @param uri The URI of the layer
    */
   private async saveLayerToCache(uri: vscode.Uri) {
+    if (uri.fsPath.endsWith("favourite.json")) {
+      return;
+    }
+
     // Read the file
     const content = vscode.workspace.fs.readFile(uri);
     const text = new TextDecoder().decode(await content);
@@ -372,6 +380,16 @@ export class CacheWorker {
     this.printCache();
   }
 
+  /**
+   * Save tag renderings to cache
+   * TODO: references for tagRenderings can also be a label/group, which we don't support yet
+   *
+   * @param text Text representation of layer
+   * @param from The theme or layer where the layer is from, e.g. layers.bicycle_rental or themes.cyclofix.layers.0
+   * @param fromUri URI of the layer file
+   * @param referencesOnly Whether to only save references, or also the tagRenderings and filters. This is useful for inline layers, because their filters and tagRenderings can't be reused
+   * @param fullFileText The full text of the original theme file, used for calculating position
+   */
   private async saveTagRenderingsToCache(
     text: string,
     from: string,
@@ -382,6 +400,9 @@ export class CacheWorker {
     const json = JSON.parse(text);
 
     for (const tagRendering of json.tagRenderings) {
+      const tagRenderingReferenceIndex =
+        json.tagRenderings.indexOf(tagRendering);
+
       // Check if it is a string and not an object
       if (typeof tagRendering === "string") {
         // It is a reference
@@ -390,191 +411,192 @@ export class CacheWorker {
         );
 
         // The range is dependent on whether we're dealing with a full file or not
-        // const fromStartEnd = fullFileText
-        //   ? getStartEnd(fullFileText, [
-        //       ...from.split("."),
-        //       "",
-        //       filterReferenceIndex,
-        //     ])
-        //   : getStartEnd(text, ["filter", filterReferenceIndex]);
+        const path = fullFileText
+          ? [
+              from.split(".")[2],
+              parseInt(from.split(".")[3]),
+              "tagRenderings",
+              tagRenderingReferenceIndex,
+            ]
+          : ["tagRenderings", tagRenderingReferenceIndex];
+        const fromStartEnd = fullFileText
+          ? getStartEnd(fullFileText, path)
+          : getStartEnd(text, path);
+        const to = tagRendering.includes(".")
+          ? `layers.${tagRendering.split(".")[0]}.tagRenderings.${
+              tagRendering.split(".")[1]
+            }`
+          : `layers.questions.tagRenderings.${tagRendering}`;
+        const toFileName = tagRendering.includes(".")
+          ? `**/assets/layers/${tagRendering.split(".")[0]}/${
+              tagRendering.split(".")[0]
+            }.json`
+          : `**/assets/layers/questions/questions.json`;
+        const toFile = await vscode.workspace.findFiles(toFileName);
 
-        // The range depends on whether we're dealing with a full file or not
-        // const fromStartEnd = fullFileText
-        //   ? getStartEnd(fullFileText, [
-        //       ...from.split("."),
-        //       "tagRenderings",
-        //       json.tagRenderings.indexOf(tagRendering),
-        //     ])
-        //   : getStartEnd(text, [
-        //       "tagRenderings",
-        //       json.tagRenderings.indexOf(tagRendering),
-        //     ]);
+        // Read toFile and get the text
+        const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+        const toText = new TextDecoder().decode(toContent);
+        const toJson = JSON.parse(toText);
+        const trIndex = toJson.tagRenderings.findIndex(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (tr: any) => tr.id === tagRendering.split(".")?.pop()
+        );
+        const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-        // const to = tagRendering.includes(".")
-        //   ? `layers.${tagRendering.split(".")[0]}.tagRenderings.${
-        //       tagRendering.split(".")[1]
-        //     }`
-        //   : `layers.questions.tagRenderings.${tagRendering}`;
-        // const toFile = await vscode.workspace.findFiles(
-        //   `**/assets/layers/${to.split("."[1])}/${to.split(".")[1]}.json`
-        // );
-        // // Read toFile and get the text
-        // const toContent = await vscode.workspace.fs.readFile(toFile[0]);
-        // const toText = new TextDecoder().decode(toContent);
-        // const toJson = JSON.parse(toText);
-        // const trIndex = toJson.tagRenderings.findIndex(
-        //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        //   (tr: any) => tr.id === tagRendering.split(".")?.pop()
-        // );
-        // const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+        this.cache.push({
+          id: tagRendering,
+          filePath: fromUri,
+          jsonPath: ["tagRenderings"],
+          type: "reference",
+          reference: {
+            from: {
+              id: from,
+              uri: fromUri,
+              range: [fromStartEnd.start, fromStartEnd.end],
+            },
+            to: {
+              id: to,
+              uri: toFile[0],
+              range: [toRange.start, toRange.end],
+            },
+            type: "tagRendering",
+          },
+        });
+      } else if (typeof tagRendering === "object") {
+        // This is a tagRendering, or a reference to one, but with an override
+        if (tagRendering.builtin) {
+          // This is a reference to a built-in tagRendering (or multiple ones)
+          if (typeof tagRendering.builtin === "string") {
+            // Single tagRendering reference
+            console.log(
+              `Reference found to builtin tagRendering ${tagRendering.builtin} in ${from}`
+            );
+            // The range is dependent on whether we're dealing with a full file or not
+            const path = fullFileText
+              ? [
+                  from.split(".")[2],
+                  parseInt(from.split(".")[3]),
+                  "tagRenderings",
+                  tagRenderingReferenceIndex,
+                  "builtin",
+                ]
+              : ["tagRenderings", tagRenderingReferenceIndex, "builtin"];
+            const fromStartEnd = fullFileText
+              ? getStartEnd(fullFileText, path)
+              : getStartEnd(text, path);
+            const to = tagRendering.builtin.includes(".")
+              ? `layers.${tagRendering.builtin.split(".")[0]}.tagRenderings.${
+                  tagRendering.builtin.split(".")[1]
+                }`
+              : `layers.questions.tagRenderings.${tagRendering}`;
+            const toFileName = tagRendering.builtin.includes(".")
+              ? `**/assets/layers/${tagRendering.builtin.split(".")[0]}/${
+                  tagRendering.builtin.split(".")[0]
+                }.json`
+              : `**/assets/layers/questions/questions.json`;
+            const toFile = await vscode.workspace.findFiles(toFileName);
 
-        // this.cache.push({
-        //   id: tagRendering,
-        //   filePath: fromUri,
-        //   jsonPath: ["tagRenderings"],
-        //   type: "reference",
-        //   reference: {
-        //     from: {
-        //       id: from,
-        //       uri: fromUri,
-        //       range: fromStartEnd,
-        //     },
-        //     to: {
-        //       id: to,
-        //       uri: toFile[0],
-        //       range: toRange,
-        //     },
-        //     type: "tagRendering",
-        //   },
-        // });
+            // Read toFile and get the text
+            const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+            const toText = new TextDecoder().decode(toContent);
+            const toJson = JSON.parse(toText);
+            const trIndex = toJson.tagRenderings.findIndex(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (tr: any) => tr.id === tagRendering.builtin.split(".")?.pop()
+            );
+            const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+            this.cache.push({
+              id: tagRendering.builtin,
+              filePath: fromUri,
+              jsonPath: ["tagRenderings"],
+              type: "reference",
+              reference: {
+                from: {
+                  id: from,
+                  uri: fromUri,
+                  range: [fromStartEnd.start, fromStartEnd.end],
+                },
+                to: {
+                  id: to,
+                  uri: toFile[0],
+                  range: [toRange.start, toRange.end],
+                },
+                type: "tagRendering",
+              },
+            });
+          } else {
+            // Multiple tagRenderings
+            for (const builtinTagRendering of tagRendering.builtin) {
+              console.log(
+                `Reference found to builtin tagRendering ${builtinTagRendering} in ${from}`
+              );
+              // The range depends on whether we're dealing with a full file or not
+              const fromStartEnd = fullFileText
+                ? getStartEnd(fullFileText, [
+                    ...from.split("."),
+                    "tagRenderings",
+                    json.tagRenderings.indexOf(tagRendering),
+                  ])
+                : getStartEnd(text, [
+                    "tagRenderings",
+                    json.tagRenderings.indexOf(tagRendering),
+                  ]);
+              const to = builtinTagRendering.includes(".")
+                ? `layers.${builtinTagRendering.split(".")[0]}.tagRenderings.${
+                    builtinTagRendering.split(".")[1]
+                  }`
+                : `layers.questions.tagRenderings.${builtinTagRendering}`;
+              const toFileName = builtinTagRendering.includes(".")
+                ? `**/assets/layers/${builtinTagRendering.split(".")[0]}/${
+                    builtinTagRendering.split(".")[0]
+                  }.json`
+                : `**/assets/layers/questions/questions.json`;
+              const toFile = await vscode.workspace.findFiles(toFileName);
+
+              // Read toFile and get the text
+              const toContent = await vscode.workspace.fs.readFile(toFile[0]);
+              const toText = new TextDecoder().decode(toContent);
+              const toJson = JSON.parse(toText);
+              const trIndex = toJson.tagRenderings.findIndex(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (tr: any) => tr.id === builtinTagRendering.split(".")?.pop()
+              );
+              const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+              this.cache.push({
+                id: builtinTagRendering,
+                filePath: fromUri,
+                jsonPath: ["tagRenderings"],
+                type: "reference",
+                reference: {
+                  from: {
+                    id: from,
+                    uri: fromUri,
+                    range: [fromStartEnd.start, fromStartEnd.end],
+                  },
+                  to: {
+                    id: to,
+                    uri: toFile[0],
+                    range: [toRange.start, toRange.end],
+                  },
+                  type: "tagRendering",
+                },
+              });
+            }
+          }
+        } else if (!referencesOnly) {
+          // We've now had all possible references, so now we must have an acutal tagRendering
+          console.log(`TagRendering found in ${from}`);
+          this.cache.push({
+            id: `${json.id}.${tagRendering.id}`,
+            filePath: fromUri,
+            jsonPath: ["tagRenderings"],
+            type: "tagRendering",
+          });
+        }
       }
-      // } else if (typeof tagRendering === "object") {
-      //   // This is a tagRendering, or a reference to one
-      //   if (tagRendering.builtin) {
-      //     // This is a reference to a built-in tagRendering (or multiple ones)
-      //     if (typeof tagRendering.builtin === "string") {
-      //       // Single tagRendering
-      //       console.log(
-      //         `Reference found to ${tagRendering.builtin} in ${from}`
-      //       );
-
-      //       // The range depends on whether we're dealing with a full file or not
-      //       const fromStartEnd = fullFileText
-      //         ? getStartEnd(fullFileText, [
-      //             ...from.split("."),
-      //             "tagRenderings",
-      //             json.tagRenderings.indexOf(tagRendering),
-      //           ])
-      //         : getStartEnd(text, [
-      //             "tagRenderings",
-      //             json.tagRenderings.indexOf(tagRendering),
-      //           ]);
-
-      //       const to = tagRendering.builtin.includes(".")
-      //         ? `layers.${tagRendering.builtin.split(".")[0]}.tagRenderings.${
-      //             tagRendering.builtin.split(".")[1]
-      //           }`
-      //         : `layers.questions.tagRenderings.${tagRendering.builtin}`;
-      //       const toFile = await vscode.workspace.findFiles(
-      //         `**/assets/layers/${to.split("."[1])}/${to.split(".")[1]}.json`
-      //       );
-      //       // Read toFile and get the text
-      //       const toContent = await vscode.workspace.fs.readFile(toFile[0]);
-      //       const toText = new TextDecoder().decode(toContent);
-      //       const toJson = JSON.parse(toText);
-      //       const trIndex = toJson.tagRenderings.findIndex(
-      //         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      //         (tr: any) => tr.id === tagRendering.builtin.split(".")?.pop()
-      //       );
-      //       const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
-
-      //       this.cache.push({
-      //         id: tagRendering.builtin,
-      //         filePath: fromUri,
-      //         jsonPath: ["tagRenderings"],
-      //         type: "reference",
-      //         reference: {
-      //           from: {
-      //             id: from,
-      //             uri: fromUri,
-      //             range: fromStartEnd,
-      //           },
-      //           to: {
-      //             id: to,
-      //             uri: toFile[0],
-      //             range: toRange,
-      //           },
-      //           type: "tagRendering",
-      //         },
-      //       });
-      //     } else {
-      //       // Multiple tagRenderings
-      //       for (const builtinTagRendering of tagRendering.builtin) {
-      //         console.log(
-      //           `Reference found to ${builtinTagRendering} in ${from}`
-      //         );
-
-      //         // The range depends on whether we're dealing with a full file or not
-      //         const fromStartEnd = fullFileText
-      //           ? getStartEnd(fullFileText, [
-      //               ...from.split("."),
-      //               "tagRenderings",
-      //               json.tagRenderings.indexOf(tagRendering),
-      //             ])
-      //           : getStartEnd(text, [
-      //               "tagRenderings",
-      //               json.tagRenderings.indexOf(tagRendering),
-      //             ]);
-
-      //         const to = builtinTagRendering.includes(".")
-      //           ? `layers.${builtinTagRendering.split(".")[0]}.tagRenderings.${
-      //               builtinTagRendering.split(".")[1]
-      //             }`
-      //           : `layers.questions.tagRenderings.${builtinTagRendering}`;
-      //         const toFile = await vscode.workspace.findFiles(
-      //           `**/assets/layers/${to.split("."[1])}/${to.split(".")[1]}.json`
-      //         );
-      //         // Read toFile and get the text
-      //         const toContent = await vscode.workspace.fs.readFile(toFile[0]);
-      //         const toText = new TextDecoder().decode(toContent);
-      //         const toJson = JSON.parse(toText);
-      //         const trIndex = toJson.tagRenderings.findIndex(
-      //           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      //           (tr: any) => tr.id === builtinTagRendering.split(".")?.pop()
-      //         );
-      //         const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
-
-      //         this.cache.push({
-      //           id: builtinTagRendering,
-      //           filePath: fromUri,
-      //           jsonPath: ["tagRenderings"],
-      //           type: "reference",
-      //           reference: {
-      //             from: {
-      //               id: from,
-      //               uri: fromUri,
-      //               range: fromStartEnd,
-      //             },
-      //             to: {
-      //               id: to,
-      //               uri: toFile[0],
-      //               range: toRange,
-      //             },
-      //             type: "tagRendering",
-      //           },
-      //         });
-      //       }
-      //     }
-      //   } else if (!referencesOnly) {
-      //     // This is a tagRendering, which can be reused
-      //     console.log(`TagRendering found in ${from}`);
-      //     this.cache.push({
-      //       id: `${json.id}.${tagRendering.id}`,
-      //       filePath: fromUri,
-      //       jsonPath: ["tagRenderings"],
-      //       type: "tagRendering",
-      //     });
-      //   }
     }
   }
 
@@ -605,14 +627,17 @@ export class CacheWorker {
         console.log(`Reference found to filter ${filter} in ${from}`);
 
         // The range is dependent on whether we're dealing with a full file or not
-        const fromStartEnd = fullFileText
-          ? getStartEnd(fullFileText, [
-              ...from.split("."),
+        const path = fullFileText
+          ? [
+              from.split(".")[2],
+              parseInt(from.split(".")[3]),
               "filter",
               filterReferenceIndex,
-            ])
-          : getStartEnd(text, ["filter", filterReferenceIndex]);
-
+            ]
+          : ["filter", filterReferenceIndex];
+        const fromStartEnd = fullFileText
+          ? getStartEnd(fullFileText, path)
+          : getStartEnd(text, path);
         const filterId = filter.includes(".") ? filter.split(".")[1] : filter;
         const to = filter.includes(".")
           ? `layers.${filter.split(".")[0]}`
@@ -624,7 +649,6 @@ export class CacheWorker {
             }.json`
           : `**/assets/layers/filters/filters.json`;
         const toFile = await vscode.workspace.findFiles(toFileName);
-
         const toContent = await vscode.workspace.fs.readFile(toFile[0]);
         const toText = new TextDecoder().decode(toContent);
         const toJson = JSON.parse(toText);
@@ -648,12 +672,12 @@ export class CacheWorker {
             from: {
               id: from,
               uri: fromUri,
-              range: fromStartEnd,
+              range: [fromStartEnd.start, fromStartEnd.end],
             },
             to: {
               id: to,
               uri: toFile[0],
-              range: toRange,
+              range: [toRange.start, toRange.end],
             },
             type: "filter",
           },
@@ -857,5 +881,10 @@ interface ReferenceDetail {
    *
    * Only defined when referencing to a part of a file
    */
-  range?: vscode.Range;
+  range?: [ReferencePosition, ReferencePosition];
+}
+
+interface ReferencePosition {
+  character: number;
+  line: number;
 }
