@@ -640,8 +640,8 @@ export class CacheWorker {
           : getStartEnd(text, path);
         const filterId = filter.includes(".") ? filter.split(".")[1] : filter;
         const to = filter.includes(".")
-          ? `layers.${filter.split(".")[0]}`
-          : `layers.filters`;
+          ? `layers.${filter.split(".")[0]}.filter.${filterId}`
+          : `layers.filters.filter.${filterId}`;
         // Now we'll need to determine what file we need to look in
         const toFileName = filter.includes(".")
           ? `**/assets/layers/${filter.split(".")[0]}/${

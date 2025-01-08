@@ -4,6 +4,7 @@ import { colorProvider, iconDefinitionProvider } from "./generic";
 import {
   filterCompletionProvider,
   filterDefinitionProvider,
+  filterImplementationProvider,
   tagRenderingCompletionProvider,
   tagRenderingDefinitionProvider,
   tagRenderingImplementationProvider,
@@ -21,7 +22,8 @@ export async function activate(context: vscode.ExtensionContext) {
     tagRenderingDefinitionProvider,
     filterCompletionProvider,
     filterDefinitionProvider,
-    tagRenderingImplementationProvider
+    tagRenderingImplementationProvider,
+    filterImplementationProvider
   );
 
   // Activate all license info related features
