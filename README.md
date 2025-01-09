@@ -5,15 +5,27 @@ It adds autocompletion and defintion support for the MapComplete theme and layer
 
 Currently the following features are supported:
 
-- Autocompletion for the layer names
-- Definition support for the layer names
-- Definintion support for icons
-- Autocompletion for tagRenderings in questions.json
-- Definition support for tagRenderings
-- Autocompletion for filter keys in questions.json
-- Definition support for filter keys
-- Definition support for paths in license_info.json files
-- Colour support for markers, lines and fills
+- Layers:
+  - Autocompletion for the layer names
+  - Definition support for the layer names
+  - Implementation support for the layer names (showing where they are used)
+- TagRenderings:
+  - Autocompletion for _all_ tagRenderings
+  - Definition support for tagRenderings
+  - Implementation support for tagRenderings (showing where they are used)
+- Filters:
+  - Autocompletion for _all_ filters
+  - Definition support for filters
+  - Implementation support for filters (showing where they are used)
+- Icons:
+  - Autocompletion for icons
+  - Definition support for icons
+- Colours:
+  - Support for colours in markers, lines and fills
+- License info:
+  - Definition support for paths in license_info.json files
+
+To achieve some of these feature, on startup the extension will parse all the files, which takes about 30 seconds. This will only happen once per session, and will update individual files as they are saved or removed.
 
 ![Demo showing autcomplete for layers and icon definition](images/demo.gif)
 
@@ -23,20 +35,24 @@ All notable changes to this project are documented in the [CHANGELOG](CHANGELOG.
 
 The extension can be installed in several ways:
 
-### From the Visual Studio Code marketplace
+### From the marketplace
 
-You can install this extension from the [Visual Studio Code marketplace](https://marketplace.visualstudio.com/items?itemName=robin-van-der-linde.mapcompletevscode). Just search for "MapComplete" and you should find it.
+The extension is available both in the [Visual Studio Code marketplace](https://marketplace.visualstudio.com/items?itemName=robin-van-der-linde.mapcompletevscode) and the [Open VSX registry](https://open-vsx.org/extension/robin-van-der-linde/mapcompletevscode).
 
-Alternatively you van press `Ctrl+P` and paste the following command:
+So for both Visual Studio Code and VSCodium, you should just be able to search for "MapComplete" in the extensions tab and install it from there.
+
+Alternatively you can press `Ctrl+P` and paste the following command:
 
 ```cmd
 ext install robin-van-der-linde.mapcompletevscode
 ```
 
-### From Open VSX
-
-You can also install the extension from the [Open VSX registry](https://open-vsx.org/extension/robin-van-der-linde/mapcompletevscode). Just search for "MapComplete" and you should find it.
-
 ### From the .vsix file
 
 You can also install the extension from the .vsix file. You can download the latest version from the [releases page](https://github.com/RobinLinde/MapCompleteVScode/releases). After downloading the .vsix file, you should be able to install it by going to extensions in Visual Studio Code and clicking on the three dots in the top right corner. Then click on "Install from VSIX..." and select the downloaded .vsix file.
+
+It's also possible to install builds for any commit in any branch by checking out the workflow run for the commit you want to install, and downloading the .vsix file from the artifacts.
+
+## Usage
+
+Most of the features should be pretty self-explanatory. As for the implementation support, the 'anchor' for this is the id property of the layer, tagRendering or filter. This means that if you want to see where a layer is used, you should be able to see all uses by using `CTRL+F12` on the id property of the layer, or by right-clicking on the id property and selecting "Go to Implementations".
