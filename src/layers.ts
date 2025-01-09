@@ -183,8 +183,7 @@ export const tagRenderingImplementationProvider =
     {
       async provideImplementation(
         document: vscode.TextDocument,
-        position: vscode.Position,
-        _token: vscode.CancellationToken
+        position: vscode.Position
       ) {
         console.log("tagRenderingImplementationProvider");
         const text = document.getText();
@@ -416,8 +415,7 @@ export const filterImplementationProvider =
     {
       async provideImplementation(
         document: vscode.TextDocument,
-        position: vscode.Position,
-        _token: vscode.CancellationToken
+        position: vscode.Position
       ) {
         console.log("filterImplementationProvider");
         const text = document.getText();
@@ -478,6 +476,79 @@ export const filterImplementationProvider =
         }
 
         return null;
+      },
+    }
+  );
+
+export const layerImplementationProvider =
+  vscode.languages.registerImplementationProvider(
+    {
+      language: "json",
+      scheme: "file",
+      pattern: "**/assets/layers/*/*.json",
+    },
+    {
+      async provideImplementation(
+        document: vscode.TextDocument,
+        position: vscode.Position
+      ) {
+        console.log("layerImplementationProvider");
+        const text = document.getText();
+        const jsonPath = getCursorPath(text, position);
+        const rawJsonPath = getRawCursorPath(text, position);
+
+        // Easiest regex in this package for sure
+        const regex = /^id$/;
+
+        if (regex.exec(jsonPath)) {
+          const layerId = getValueFromPath(text, rawJsonPath);
+          const to = `layers.${layerId}`;
+
+          try {
+            const cache = await Cache.create();
+            const references = cache.getReferences(to);
+
+            if (references.length === 0) {
+              console.log("No references found to", to);
+              return null;
+            } else {
+              console.log(`Found ${references.length} references to ${to}`);
+
+              const links: vscode.DefinitionLink[] = [];
+              for (const reference of references) {
+                console.log(
+                  `Pushing link from ${document.fileName} to ${reference.reference?.from.uri?.fsPath} at ${reference.reference?.to.range?.[0]?.line}:${reference.reference?.to.range?.[0]?.character}`,
+                  reference
+                );
+
+                // Check if we have a targetUri
+                if (reference.reference?.from.uri) {
+                  links.push({
+                    originSelectionRange: new vscode.Range(
+                      reference.reference?.to?.range?.[0]?.line ?? 0,
+                      reference.reference?.to?.range?.[0]?.character ?? 0,
+                      reference.reference?.to?.range?.[1]?.line ?? 0,
+                      reference.reference?.to?.range?.[1]?.character ?? 0
+                    ),
+                    targetRange: new vscode.Range(
+                      reference.reference?.from?.range?.[0]?.line ?? 0,
+                      reference.reference?.from?.range?.[0]?.character ?? 0,
+                      reference.reference?.from?.range?.[1]?.line ?? 0,
+                      reference.reference?.from?.range?.[1]?.character ?? 0
+                    ),
+                    targetUri: reference.reference?.from?.uri,
+                  });
+                } else {
+                  console.error("Incomplete reference", reference);
+                }
+              }
+              console.log(`Found ${links.length} implementations`);
+              return links;
+            }
+          } catch (error) {
+            console.error("Error get implementation", error);
+          }
+        }
       },
     }
   );

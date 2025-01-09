@@ -5,6 +5,7 @@ import {
   filterCompletionProvider,
   filterDefinitionProvider,
   filterImplementationProvider,
+  layerImplementationProvider,
   tagRenderingCompletionProvider,
   tagRenderingDefinitionProvider,
   tagRenderingImplementationProvider,
@@ -23,7 +24,8 @@ export async function activate(context: vscode.ExtensionContext) {
     filterCompletionProvider,
     filterDefinitionProvider,
     tagRenderingImplementationProvider,
-    filterImplementationProvider
+    filterImplementationProvider,
+    layerImplementationProvider
   );
 
   // Activate all license info related features
