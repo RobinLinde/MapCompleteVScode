@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
   It's also possible to look up uses of a filter or a tagRendering.
   The caching will take about 30 seconds to complete, but it will only run once per session, and will update individual files as they are saved or removed.
 
+### Fixed
+
+- Icons with mappings are not clickable anymore.
+
 ## Version 1.1.1 (2025-01-07)
 
 ### Fixed

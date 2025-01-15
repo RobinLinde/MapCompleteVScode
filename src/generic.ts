@@ -40,6 +40,12 @@ export const iconDefinitionProvider =
           const iconPath = getValueFromPath(text, rawJsonPath);
           console.log("Found reference to icon", iconPath);
 
+          // Check if there is a mapping in there, cause we can't predict the icon path
+          const regex = /{{.+}}/;
+          if (regex.exec(iconPath)) {
+            return [];
+          }
+
           let fullIconPath: string;
 
           // Check if the path starts with a dot, if so, it's a relative path
