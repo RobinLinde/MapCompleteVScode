@@ -57,3 +57,5 @@ It's also possible to install builds for any commit in any branch by checking ou
 ## Usage
 
 Most of the features should be pretty self-explanatory. As for the implementation support, the 'anchor' for this is the id property of the layer, tagRendering or filter. This means that if you want to see where a layer is used, you should be able to see all uses by using `CTRL+F12` on the id property of the layer, or by right-clicking on the id property and selecting "Go to Implementations".
+
+![Demo showing implementation support for tagRenderings](images/implementation.gif)

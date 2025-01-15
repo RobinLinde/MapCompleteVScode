@@ -2,19 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased Version 1.2.0 (2025-XX-XX)
+## Version 1.2.0 (2025-01-15)
 
 ### Added
 
 - New caching mechanism for references, tagRenderings and filters.
   This allows the completions to show _all_ filters, not just the ones in `filters.json` and `questions.json`.
   It's also possible to look up uses of a filter or a tagRendering.
-  The caching will take about 30 seconds to complete, but it will only run once per session, and will update individual files as they are saved or removed.
-- Autocompletion for `icon` fields, giving the built-in icons as suggestions.
+  The caching will take about 30 seconds to complete, but will be saved so it only needs to be done once. On subsequent activations, the cache will be updated if there are changes to the files. Also, it's updated whenever you save or remove a file in your editor. It is also possible to disable this feature in settings, however this will disable the autocompletion for filters and tagRenderings that are not in the `filters.json` and `questions.json` files, as well as the implementation support.
+- Autocompletion for `icon` fields, giving the built-in icons as suggestions. ([#7](https://github.com/RobinLinde/MapCompleteVScode/issues/7))
 
 ### Fixed
 
-- Icons with mappings are not clickable anymore.
+- Icons with mappings are not clickable anymore. ([#14](https://github.com/RobinLinde/MapCompleteVScode/issues/14))
 
 ## Version 1.1.1 (2025-01-07)
 
