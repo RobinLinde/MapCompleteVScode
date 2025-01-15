@@ -12,6 +12,59 @@ import {
   vsCodeToHex,
 } from "./utils/color";
 
+export const iconCompletionProvider =
+  vscode.languages.registerCompletionItemProvider(
+    {
+      language: "json",
+      scheme: "file",
+      pattern: "**/assets/*/*/*.json",
+    },
+    {
+      async provideCompletionItems(
+        document: vscode.TextDocument,
+        position: vscode.Position
+      ) {
+        console.log("iconCompletionProvider");
+        const text = document.getText();
+        const jsonPath = getCursorPath(text, position);
+
+        const regexes = [/icon$/, /icon.render/, /icon.mappings.\d+.then$/];
+
+        if (regexes.some((regex) => regex.exec(jsonPath))) {
+          // We need to look at all the files in the assets/svg folder
+          const svgFolder = path.join(
+            (vscode.workspace.workspaceFolders
+              ? vscode.workspace.workspaceFolders[0].uri.fsPath
+              : "") || "",
+            "assets",
+            "svg"
+          );
+
+          const files = await vscode.workspace.fs.readDirectory(
+            vscode.Uri.file(svgFolder)
+          );
+
+          const icons: vscode.CompletionItem[] = [];
+
+          files.forEach((file) => {
+            if (file[1] === 1) {
+              if (file[0].endsWith(".svg")) {
+                const name = file[0].split(".")[0];
+                icons.push({
+                  label: name,
+                  kind: vscode.CompletionItemKind.File,
+                  insertText: name,
+                });
+              }
+            }
+          });
+
+          return icons;
+        }
+      },
+    }
+  );
+
 /**
  * Icon definition provider
  *
