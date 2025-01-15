@@ -18,7 +18,11 @@ export class CacheWorker {
   /**
    * List of cache items
    */
-  private cache: CacheItem[] = [];
+  private cache: CacheData = {
+    timestamp: 0,
+    items: [],
+    files: {},
+  };
 
   /**
    * Creates a new cache
@@ -30,6 +34,7 @@ export class CacheWorker {
     context: vscode.ExtensionContext
   ): Promise<CacheWorker> {
     const cache = new CacheWorker(context);
+    await cache.loadCacheFromFile();
     await cache.scanWorkspace();
     return cache;
   }
@@ -51,6 +56,7 @@ export class CacheWorker {
    * TODO: Find a more elegant way to do this
    */
   private save() {
+    this.cache.timestamp = Date.now();
     const jsonString = JSON.stringify(this.cache);
     // Save it in the cache.json file in the .cache folder in the workspace
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
@@ -59,6 +65,22 @@ export class CacheWorker {
       vscode.workspace.fs.writeFile(cacheUri, Buffer.from(jsonString));
     } else {
       console.error("No workspace folder found");
+    }
+  }
+
+  /**
+   * Load the cache from the .cache/cache.json file
+   */
+  private async loadCacheFromFile() {
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+      const cacheUri = vscode.Uri.file(`${workspaceFolder}/.cache/cache.json`);
+      const cache = await vscode.workspace.fs.readFile(cacheUri);
+      const cacheString = new TextDecoder().decode(cache);
+      this.cache = JSON.parse(cacheString);
+    } catch (error) {
+      console.error("Failed to load cache from file:", error);
+      this.cache = { timestamp: 0, items: [], files: {} };
     }
   }
 
@@ -90,10 +112,36 @@ export class CacheWorker {
    * Scans the workspace for all themes and layers
    */
   private async scanWorkspace() {
-    const files = await vscode.workspace.findFiles("**/assets/**/*.json");
+    let changedFiles = 0;
+    let unchangedFiles = 0;
+    const files = await vscode.workspace.findFiles("assets/*/*/*.json");
     for (const file of files) {
-      this.saveFileToCache(file);
+      if (
+        file.fsPath.endsWith("license_info.json") ||
+        file.fsPath.endsWith(".proto.json") ||
+        file.fsPath.endsWith("layers/favourite/favourite.json")
+      ) {
+        continue;
+      }
+      const stats = await vscode.workspace.fs.stat(file);
+      if (stats.mtime > (this.cache.files[file.fsPath] || 0)) {
+        console.log(
+          "File has changed",
+          file.fsPath,
+          "last modified",
+          stats.mtime,
+          "cache",
+          this.cache.files[file.fsPath]
+        );
+        this.saveFileToCache(file);
+        changedFiles++;
+      } else {
+        unchangedFiles++;
+      }
     }
+    console.log(
+      `Scanned workspace: ${changedFiles} changed files, ${unchangedFiles} unchanged files`
+    );
   }
 
   /**
@@ -141,7 +189,7 @@ export class CacheWorker {
    * @param uri File URI
    */
   private deleteFileFromCache(uri: vscode.Uri) {
-    this.cache = this.cache.filter(
+    this.cache.items = this.cache.items.filter(
       (item) => item.filePath.fsPath !== uri.fsPath
     );
 
@@ -184,7 +232,7 @@ export class CacheWorker {
           `**/assets/layers/${layer}/${layer}.json`
         );
 
-        this.cache.push({
+        this.cache.items.push({
           id: layer,
           filePath: uri,
           jsonPath: ["layers"],
@@ -221,7 +269,7 @@ export class CacheWorker {
             `**/assets/layers/${layer.builtin}/${layer.builtin}.json`
           );
 
-          this.cache.push({
+          this.cache.items.push({
             id: layer.builtin,
             filePath: uri,
             jsonPath: ["layers"],
@@ -258,7 +306,7 @@ export class CacheWorker {
               `**/assets/layers/${builtinLayer}/${builtinLayer}.json`
             );
 
-            this.cache.push({
+            this.cache.items.push({
               id: builtinLayer,
               filePath: uri,
               jsonPath: ["layers"],
@@ -288,6 +336,12 @@ export class CacheWorker {
       }
     }
 
+    // We also need to update the timestamp for this file
+    // First, we need to get the last modified date of the file
+    const stats = await vscode.workspace.fs.stat(uri);
+    this.cache.files[uri.fsPath] = stats.mtime;
+
+    // Save the cache
     this.save();
     this.printCache();
   }
@@ -311,6 +365,15 @@ export class CacheWorker {
     const from = `layers.${uriFileName.split(".")[0]}`;
 
     await this.saveLayerTextToCache(text, uri, from);
+
+    // We also need to update the timestamp for this file
+    // First, we need to get the last modified date of the file
+    const stats = await vscode.workspace.fs.stat(uri);
+    this.cache.files[uri.fsPath] = stats.mtime;
+
+    // Save the cache
+    this.save();
+    this.printCache();
   }
 
   /**
@@ -375,9 +438,6 @@ export class CacheWorker {
     } else {
       console.log("No filters found in", filePath);
     }
-
-    this.save();
-    this.printCache();
   }
 
   /**
@@ -444,7 +504,7 @@ export class CacheWorker {
         );
         const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-        this.cache.push({
+        this.cache.items.push({
           id: tagRendering,
           filePath: fromUri,
           jsonPath: ["tagRenderings"],
@@ -507,7 +567,7 @@ export class CacheWorker {
             );
             const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-            this.cache.push({
+            this.cache.items.push({
               id: tagRendering.builtin,
               filePath: fromUri,
               jsonPath: ["tagRenderings"],
@@ -565,7 +625,7 @@ export class CacheWorker {
               );
               const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-              this.cache.push({
+              this.cache.items.push({
                 id: builtinTagRendering,
                 filePath: fromUri,
                 jsonPath: ["tagRenderings"],
@@ -589,7 +649,7 @@ export class CacheWorker {
         } else if (!referencesOnly) {
           // We've now had all possible references, so now we must have an acutal tagRendering
           console.log(`TagRendering found in ${from}`);
-          this.cache.push({
+          this.cache.items.push({
             id: `${json.id}.${tagRendering.id}`,
             filePath: fromUri,
             jsonPath: ["tagRenderings"],
@@ -663,7 +723,7 @@ export class CacheWorker {
         }
         const toRange = getStartEnd(toText, ["filter", toFilterIndex]);
 
-        this.cache.push({
+        this.cache.items.push({
           id: filter,
           filePath: fromUri,
           jsonPath: ["filters"],
@@ -685,7 +745,7 @@ export class CacheWorker {
       } else if (typeof filter === "object" && !referencesOnly) {
         // This is a filter, which can be reused
         console.log(`Filter found in ${from}`);
-        this.cache.push({
+        this.cache.items.push({
           id: `${json.id}.${filter.id}`,
           filePath: fromUri,
           jsonPath: ["filters"],
@@ -708,7 +768,11 @@ export class CacheWorker {
  * Cache for interacting with the cache
  */
 export class Cache {
-  private cache: CacheItem[] = [];
+  private cache: CacheData = {
+    timestamp: 0,
+    items: [],
+    files: {},
+  };
 
   public static async create() {
     const cache = new Cache();
@@ -742,7 +806,7 @@ export class Cache {
   public getTagRenderings(): vscode.CompletionItem[] {
     console.log("Getting tag renderings from cache");
     const tagRenderings: vscode.CompletionItem[] = [];
-    for (const item of this.cache) {
+    for (const item of this.cache.items) {
       if (item.type === "tagRendering") {
         if (item.id.startsWith("questions.")) {
           const completionItem = new vscode.CompletionItem(
@@ -768,7 +832,7 @@ export class Cache {
   public getFilters(): vscode.CompletionItem[] {
     console.log("Getting filters from cache");
     const filters: vscode.CompletionItem[] = [];
-    for (const item of this.cache) {
+    for (const item of this.cache.items) {
       if (item.type === "filter") {
         if (item.id.startsWith("filters.")) {
           const completionItem = new vscode.CompletionItem(
@@ -795,13 +859,35 @@ export class Cache {
    * @returns List of references
    */
   public getReferences(to: string): CacheItem[] {
-    return this.cache.filter((item) => {
+    return this.cache.items.filter((item) => {
       if (item.type === "reference") {
         return item.reference?.to.id === to;
       }
       return false;
     });
   }
+}
+
+/**
+ * Layout of a cache data file
+ */
+interface CacheData {
+  /**
+   * Timestamp when the cache was last updated
+   */
+  timestamp: number;
+
+  /**
+   * List of cache items
+   */
+  items: CacheItem[];
+
+  /**
+   * List of files, together with their last modified timestamp
+   *
+   * The timestamp is defined as the number of milliseconds since January 1, 1970, 00:00:00 UTC
+   */
+  files: Record<string, number>;
 }
 
 /**
