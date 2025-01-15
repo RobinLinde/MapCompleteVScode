@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- TagsRenderings, filters and colours with in override or overrideAll were not working correctly.
+- TagRenderings, filters and colours with in override or overrideAll were not working correctly.
 - Colours were not correctly parsed when using hex colours (oops).
 - All files were included in the extension, not just the compiled ones. This made the extension about 50kb larger than it needed to be.
 
