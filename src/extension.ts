@@ -4,12 +4,16 @@ import { colorProvider, iconDefinitionProvider } from "./generic";
 import {
   filterCompletionProvider,
   filterDefinitionProvider,
+  filterImplementationProvider,
+  layerImplementationProvider,
   tagRenderingCompletionProvider,
   tagRenderingDefinitionProvider,
+  tagRenderingImplementationProvider,
 } from "./layers";
 import { pathDefinitionProvider } from "./license_info";
+import { CacheWorker } from "./utils/cache";
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   // Activate all theme related features
   context.subscriptions.push(layerCompletionProvider, layerDefinitionProvider);
 
@@ -18,7 +22,10 @@ export function activate(context: vscode.ExtensionContext) {
     tagRenderingCompletionProvider,
     tagRenderingDefinitionProvider,
     filterCompletionProvider,
-    filterDefinitionProvider
+    filterDefinitionProvider,
+    tagRenderingImplementationProvider,
+    filterImplementationProvider,
+    layerImplementationProvider
   );
 
   // Activate all license info related features
@@ -26,4 +33,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Activate all generic features
   context.subscriptions.push(iconDefinitionProvider, colorProvider);
+
+  // Upon activation, we also scan the workspace for all themes and layers
+  // and save them in a cache, so we can quickly look up definitions and completions
+  // for each theme and layer
+  // We should also listen for changes in the workspace, so we can update the cache
+  CacheWorker.create(context);
 }
