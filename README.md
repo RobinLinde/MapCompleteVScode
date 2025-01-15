@@ -25,9 +25,10 @@ Currently the following features are supported:
 - License info:
   - Definition support for paths in license_info.json files
 
-To achieve some of these feature, on startup the extension will parse all the files, which takes about 30 seconds. This will only happen once per session, and will update individual files as they are saved or removed.
+Upon the first activation of this extension it will scan the workspace for all layers, tagRenderings and filters and cache them. This will take about 30 seconds, but the results are saved so they will only be updated when there are changes to the files. Alternatively, it is possible to manually update the cache by running the "MapComplete: Update cache" command.
+It is also possible to deactivate the caching using setting `mapcomplete.caching`, but this will disable the implementation support, as well as the autocompletion for filters and tagRenderings that are not in the `filters.json` and `questions.json` files.
 
-![Demo showing autcomplete for layers and icon definition](images/demo.gif)
+![Demo showing tagRendering definition and autocomplete, color picker and autocomplete for filters](images/demo.gif)
 
 All notable changes to this project are documented in the [CHANGELOG](CHANGELOG.md) file.
 

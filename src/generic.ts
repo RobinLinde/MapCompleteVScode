@@ -12,6 +12,9 @@ import {
   vsCodeToHex,
 } from "./utils/color";
 
+/**
+ * This provider will provide completions for icons, based on the files in the assets/svg folder
+ */
 export const iconCompletionProvider =
   vscode.languages.registerCompletionItemProvider(
     {

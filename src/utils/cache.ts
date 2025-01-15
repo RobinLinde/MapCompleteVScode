@@ -25,6 +25,11 @@ export class CacheWorker {
   };
 
   /**
+   * File system watcher
+   */
+  private watcher: vscode.FileSystemWatcher | undefined;
+
+  /**
    * Creates a new cache
    *
    * @param context The extension context
@@ -49,6 +54,16 @@ export class CacheWorker {
     // We probably want to create a fileSystemWatcher here
     // to listen for changes in the workspace
     this.createFileSystemWatcher();
+  }
+
+  /**
+   * Disposes the cache worker
+   */
+  public dispose() {
+    // Save the cache before disposing
+    this.save();
+    // Dispose the file system watcher
+    this.watcher?.dispose();
   }
 
   /**
@@ -85,15 +100,31 @@ export class CacheWorker {
   }
 
   /**
+   * Completely clears the cache
+   */
+  private async clearCache() {
+    this.cache = { timestamp: 0, items: [], files: {} };
+    this.save();
+  }
+
+  /**
+   * Refreshes the cache
+   */
+  async refreshCache() {
+    await this.clearCache();
+    await this.scanWorkspace();
+  }
+
+  /**
    * Create a file system watcher
    */
   private createFileSystemWatcher() {
-    const watcher = vscode.workspace.createFileSystemWatcher(
+    this.watcher = vscode.workspace.createFileSystemWatcher(
       "**/assets/**/*.json"
     );
-    watcher.onDidChange(this.onChanged, this, this.context.subscriptions);
-    watcher.onDidCreate(this.onCreated, this, this.context.subscriptions);
-    watcher.onDidDelete(this.onDeleted, this, this.context.subscriptions);
+    this.watcher.onDidChange(this.onChanged, this, this.context.subscriptions);
+    this.watcher.onDidCreate(this.onCreated, this, this.context.subscriptions);
+    this.watcher.onDidDelete(this.onDeleted, this, this.context.subscriptions);
   }
 
   private onChanged(uri: vscode.Uri) {

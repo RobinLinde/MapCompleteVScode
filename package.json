@@ -49,5 +49,24 @@
   },
   "dependencies": {
     "jsonc-parser": "^3.3.1"
+  },
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "MapComplete",
+      "properties": {
+        "mapcomplete.caching": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable caching of MapComplete themes and layers."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "mapcomplete.refresh",
+        "title": "MapComplete: Refresh cache for themes, layers, filters and tagRenderings"
+      }
+    ]
   }
 }
