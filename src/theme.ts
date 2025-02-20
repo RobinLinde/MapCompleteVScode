@@ -78,6 +78,7 @@ export const layerCompletionProvider =
  * JSON paths:
  * - layers.{index} (If this is a string)
  * - layers.{index}.builtin
+ * - layers.{index}.builtin.{index}
  * - (layers.{index}.)presets.{index}.snapToLayer(.{index})
  */
 export const layerDefinitionProvider =
@@ -104,7 +105,7 @@ export const layerDefinitionProvider =
         const rawJsonPath = getRawCursorPath(text, position);
 
         const regexes = [
-          /^layers\.\d+(.builtin)?$/,
+          /^layers\.\d+(.builtin(.\d+)?)?$/,
           /^(layers.\d+.)?presets.\d+.snapToLayer(.\d)*$/,
         ];
         if (regexes.some((regex) => regex.exec(jsonPath))) {
