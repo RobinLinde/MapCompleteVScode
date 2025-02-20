@@ -14,6 +14,11 @@ import {
 
 /**
  * This provider will provide completions for icons, based on the files in the assets/svg folder
+ *
+ * JSON paths:
+ * - icon
+ * - icon.render
+ * - icon.mappings.{index}.then
  */
 export const iconCompletionProvider =
   vscode.languages.registerCompletionItemProvider(
@@ -72,6 +77,12 @@ export const iconCompletionProvider =
  * Icon definition provider
  *
  * This provider will provide a definition for icons, allowing users to jump to the icon file
+ *
+ * JSON paths:
+ * - icon
+ * - icon.render
+ * - icon.mappings.{index}.then
+ * - socialImage
  */
 export const iconDefinitionProvider =
   vscode.languages.registerDefinitionProvider(
@@ -90,7 +101,14 @@ export const iconDefinitionProvider =
         const jsonPath = getCursorPath(text, position);
         const rawJsonPath = getRawCursorPath(text, position);
 
-        const regexes = [/icon$/, /icon.render/, /icon.mappings.\d+.then$/];
+        console.log("Icon path:", jsonPath);
+
+        const regexes = [
+          /icon$/,
+          /icon.render/,
+          /icon.mappings.\d+.then$/,
+          /socialImage/,
+        ];
 
         if (regexes.some((regex) => regex.exec(jsonPath))) {
           const iconPath = getValueFromPath(text, rawJsonPath);
