@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 1.2.1 (2025-02-20)
+
+### Fixed
+
+- Layer definition also works for lists in the `builtin` property.
+- The `socialImage` is now also clickable.
+
 ## Version 1.2.0 (2025-01-15)
 
 ### Added
