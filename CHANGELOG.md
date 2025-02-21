@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 1.2.2 (2025-XX-XX)
+
+### Fixed
+
+- When a tagRendering is re-used by `layer.*`, it's also picked up by the implementation support ([#34](https://github.com/RobinLinde/MapCompleteVScode/issues/34)).
+- Fix a wrong ID for the refresh command.
+
 ## Version 1.2.1 (2025-02-20)
 
 ### Fixed

@@ -529,31 +529,63 @@ export class CacheWorker {
         const toContent = await vscode.workspace.fs.readFile(toFile[0]);
         const toText = new TextDecoder().decode(toContent);
         const toJson = JSON.parse(toText);
-        const trIndex = toJson.tagRenderings.findIndex(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (tr: any) => tr.id === tagRendering.split(".")?.pop()
-        );
-        const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-        this.cache.items.push({
-          id: tagRendering,
-          filePath: fromUri,
-          jsonPath: ["tagRenderings"],
-          type: "reference",
-          reference: {
-            from: {
-              id: from,
-              uri: fromUri,
-              range: [fromStartEnd.start, fromStartEnd.end],
+        let trIds: string[] = [];
+
+        // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
+        // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
+        // TODO: this also needs to look in labels, not just in the tagRendering id
+        if (to.includes("*")) {
+          // Create a list of all tagRendering ids in the target file
+          const tagRenderingsInTarget: string[] = toJson.tagRenderings.map(
+            (tr: { id: string }) => tr.id
+          );
+
+          // Now we can see which matches the pattern, by converting the to to a regex
+          const pattern = to.split(".")?.pop();
+          if (pattern) {
+            const regex = new RegExp(pattern.replace("*", ".*"));
+            const matchingTagRenderings = tagRenderingsInTarget.filter((tr) =>
+              regex.test(tr)
+            );
+            trIds = matchingTagRenderings;
+          } else {
+            console.error(`Invalid pattern ${to}`);
+          }
+        } else {
+          trIds = [tagRendering.split(".").pop() || ""];
+        }
+
+        for (const trId of trIds) {
+          const trIndex = toJson.tagRenderings.findIndex(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (tr: any) => tr.id === trId
+          );
+          const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+          // Determine the ID of the to of the reference (original to item, but with last part replaced by the tagRendering ID)
+          const toId = [...to.split(".").slice(0, -1), trId].join(".");
+
+          this.cache.items.push({
+            id: tagRendering,
+            filePath: fromUri,
+            jsonPath: ["tagRenderings"],
+            type: "reference",
+            reference: {
+              from: {
+                id: from,
+                uri: fromUri,
+                range: [fromStartEnd.start, fromStartEnd.end],
+              },
+              to: {
+                id: toId,
+                uri: toFile[0],
+                range: [toRange.start, toRange.end],
+              },
+              type: "tagRendering",
             },
-            to: {
-              id: to,
-              uri: toFile[0],
-              range: [toRange.start, toRange.end],
-            },
-            type: "tagRendering",
-          },
-        });
+          });
+        }
       } else if (typeof tagRendering === "object") {
         // This is a tagRendering, or a reference to one, but with an override
         if (tagRendering.builtin) {
@@ -592,31 +624,63 @@ export class CacheWorker {
             const toContent = await vscode.workspace.fs.readFile(toFile[0]);
             const toText = new TextDecoder().decode(toContent);
             const toJson = JSON.parse(toText);
-            const trIndex = toJson.tagRenderings.findIndex(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (tr: any) => tr.id === tagRendering.builtin.split(".")?.pop()
-            );
-            const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-            this.cache.items.push({
-              id: tagRendering.builtin,
-              filePath: fromUri,
-              jsonPath: ["tagRenderings"],
-              type: "reference",
-              reference: {
-                from: {
-                  id: from,
-                  uri: fromUri,
-                  range: [fromStartEnd.start, fromStartEnd.end],
+            let trIds: string[] = [];
+
+            // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
+            // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
+            // TODO: this also needs to look in labels, not just in the tagRendering id
+            if (to.includes("*")) {
+              // Create a list of all tagRendering ids in the target file
+              const tagRenderingsInTarget: string[] = toJson.tagRenderings.map(
+                (tr: { id: string }) => tr.id
+              );
+
+              // Now we can see which matches the pattern, by converting the to to a regex
+              const pattern = to.split(".")?.pop();
+              if (pattern) {
+                const regex = new RegExp(pattern.replace("*", ".*"));
+                const matchingTagRenderings = tagRenderingsInTarget.filter(
+                  (tr) => regex.test(tr)
+                );
+                trIds = matchingTagRenderings;
+              } else {
+                console.error(`Invalid pattern ${to}`);
+              }
+            } else {
+              trIds = [tagRendering.builtin.split(".").pop() || ""];
+            }
+
+            for (const trId of trIds) {
+              const trIndex = toJson.tagRenderings.findIndex(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (tr: any) => tr.id === trId
+              );
+              const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+              // Determine the ID of the to of the reference (original to item, but with last part replaced by the tagRendering ID)
+              const toId = [...to.split(".").slice(0, -1), trId].join(".");
+
+              this.cache.items.push({
+                id: tagRendering.builtin,
+                filePath: fromUri,
+                jsonPath: ["tagRenderings"],
+                type: "reference",
+                reference: {
+                  from: {
+                    id: from,
+                    uri: fromUri,
+                    range: [fromStartEnd.start, fromStartEnd.end],
+                  },
+                  to: {
+                    id: toId,
+                    uri: toFile[0],
+                    range: [toRange.start, toRange.end],
+                  },
+                  type: "tagRendering",
                 },
-                to: {
-                  id: to,
-                  uri: toFile[0],
-                  range: [toRange.start, toRange.end],
-                },
-                type: "tagRendering",
-              },
-            });
+              });
+            }
           } else {
             // Multiple tagRenderings
             for (const builtinTagRendering of tagRendering.builtin) {
@@ -650,31 +714,60 @@ export class CacheWorker {
               const toContent = await vscode.workspace.fs.readFile(toFile[0]);
               const toText = new TextDecoder().decode(toContent);
               const toJson = JSON.parse(toText);
-              const trIndex = toJson.tagRenderings.findIndex(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tr: any) => tr.id === builtinTagRendering.split(".")?.pop()
-              );
-              const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
 
-              this.cache.items.push({
-                id: builtinTagRendering,
-                filePath: fromUri,
-                jsonPath: ["tagRenderings"],
-                type: "reference",
-                reference: {
-                  from: {
-                    id: from,
-                    uri: fromUri,
-                    range: [fromStartEnd.start, fromStartEnd.end],
+              let trIds: string[] = [];
+
+              // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
+              // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
+              // TODO: this also needs to look in labels, not just in the tagRendering id
+              if (to.includes("*")) {
+                // Create a list of all tagRendering ids in the target file
+                const tagRenderingsInTarget: string[] =
+                  toJson.tagRenderings.map((tr: { id: string }) => tr.id);
+
+                // Now we can see which matches the pattern, by converting the to to a regex
+                const pattern = to.split(".")?.pop();
+                if (pattern) {
+                  const regex = new RegExp(pattern.replace("*", ".*"));
+                  const matchingTagRenderings = tagRenderingsInTarget.filter(
+                    (tr) => regex.test(tr)
+                  );
+                  trIds = matchingTagRenderings;
+                } else {
+                  console.error(`Invalid pattern ${to}`);
+                }
+              }
+
+              for (const trId of trIds) {
+                const trIndex = toJson.tagRenderings.findIndex(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (tr: any) => tr.id === trId
+                );
+                const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+
+                // Determine the ID of the to of the reference (original to item, but with last part replaced by the tagRendering ID)
+                const toId = [...to.split(".").slice(0, -1), trId].join(".");
+
+                this.cache.items.push({
+                  id: builtinTagRendering,
+                  filePath: fromUri,
+                  jsonPath: ["tagRenderings"],
+                  type: "reference",
+                  reference: {
+                    from: {
+                      id: from,
+                      uri: fromUri,
+                      range: [fromStartEnd.start, fromStartEnd.end],
+                    },
+                    to: {
+                      id: toId,
+                      uri: toFile[0],
+                      range: [toRange.start, toRange.end],
+                    },
+                    type: "tagRendering",
                   },
-                  to: {
-                    id: to,
-                    uri: toFile[0],
-                    range: [toRange.start, toRange.end],
-                  },
-                  type: "tagRendering",
-                },
-              });
+                });
+              }
             }
           }
         } else if (!referencesOnly) {
