@@ -29,7 +29,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   // Listen for refreshCache command
-  vscode.commands.registerCommand("mapcomplete.refreshCache", async () => {
+  vscode.commands.registerCommand("mapcomplete.refresh", async () => {
     if (cacheWorker) {
       await cacheWorker.refreshCache();
     }
