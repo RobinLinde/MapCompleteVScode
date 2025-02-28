@@ -473,7 +473,6 @@ export class CacheWorker {
 
   /**
    * Save tag renderings to cache
-   * TODO: references for tagRenderings can also be a label/group, which we don't support yet
    *
    * @param text Text representation of layer
    * @param from The theme or layer where the layer is from, e.g. layers.bicycle_rental or themes.cyclofix.layers.0
@@ -534,11 +533,13 @@ export class CacheWorker {
 
         // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
         // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
-        // TODO: this also needs to look in labels, not just in the tagRendering id
         if (to.includes("*")) {
-          // Create a list of all tagRendering ids in the target file
+          // Create a list of all tagRendering ids in the target file as well as all labels
           const tagRenderingsInTarget: string[] = toJson.tagRenderings.map(
             (tr: { id: string }) => tr.id
+          );
+          const labelsInTarget: string[][] = toJson.tagRenderings.map(
+            (tr: { labels: string[] }) => tr.labels
           );
 
           // Now we can see which matches the pattern, by converting the to to a regex
@@ -548,7 +549,19 @@ export class CacheWorker {
             const matchingTagRenderings = tagRenderingsInTarget.filter((tr) =>
               regex.test(tr)
             );
-            trIds = matchingTagRenderings;
+            for (let i = 0; i < labelsInTarget.length; i++) {
+              if (labelsInTarget[i] !== undefined) {
+                for (const label of labelsInTarget[i]) {
+                  if (regex.test(label)) {
+                    const trId = tagRenderingsInTarget[i];
+                    if (!trIds.includes(trId)) {
+                      trIds.push(trId);
+                    }
+                  }
+                }
+              }
+            }
+            trIds.push(...matchingTagRenderings);
           } else {
             console.error(`Invalid pattern ${to}`);
           }
@@ -629,11 +642,13 @@ export class CacheWorker {
 
             // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
             // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
-            // TODO: this also needs to look in labels, not just in the tagRendering id
             if (to.includes("*")) {
-              // Create a list of all tagRendering ids in the target file
+              // Create a list of all tagRendering ids in the target file, as well as all labels
               const tagRenderingsInTarget: string[] = toJson.tagRenderings.map(
                 (tr: { id: string }) => tr.id
+              );
+              const labelsInTarget: string[][] = toJson.tagRenderings.map(
+                (tr: { labels: string[] }) => tr.labels
               );
 
               // Now we can see which matches the pattern, by converting the to to a regex
@@ -643,7 +658,19 @@ export class CacheWorker {
                 const matchingTagRenderings = tagRenderingsInTarget.filter(
                   (tr) => regex.test(tr)
                 );
-                trIds = matchingTagRenderings;
+                for (let i = 0; i < labelsInTarget.length; i++) {
+                  if (labelsInTarget[i] !== undefined) {
+                    for (const label of labelsInTarget[i]) {
+                      if (regex.test(label)) {
+                        const trId = tagRenderingsInTarget[i];
+                        if (!trIds.includes(trId)) {
+                          trIds.push(trId);
+                        }
+                      }
+                    }
+                  }
+                }
+                trIds.push(...matchingTagRenderings);
               } else {
                 console.error(`Invalid pattern ${to}`);
               }
@@ -715,16 +742,17 @@ export class CacheWorker {
               const toText = new TextDecoder().decode(toContent);
               const toJson = JSON.parse(toText);
 
-              let trIds: string[] = [];
+              const trIds: string[] = [];
 
               // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
               // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
-              // TODO: this also needs to look in labels, not just in the tagRendering id
               if (to.includes("*")) {
                 // Create a list of all tagRendering ids in the target file
                 const tagRenderingsInTarget: string[] =
                   toJson.tagRenderings.map((tr: { id: string }) => tr.id);
-
+                const labelsInTarget: string[][] = toJson.tagRenderings.map(
+                  (tr: { labels: string[] }) => tr.labels
+                );
                 // Now we can see which matches the pattern, by converting the to to a regex
                 const pattern = to.split(".")?.pop();
                 if (pattern) {
@@ -732,7 +760,19 @@ export class CacheWorker {
                   const matchingTagRenderings = tagRenderingsInTarget.filter(
                     (tr) => regex.test(tr)
                   );
-                  trIds = matchingTagRenderings;
+                  for (let i = 0; i < labelsInTarget.length; i++) {
+                    if (labelsInTarget[i] !== undefined) {
+                      for (const label of labelsInTarget[i]) {
+                        if (regex.test(label)) {
+                          const trId = tagRenderingsInTarget[i];
+                          if (!trIds.includes(trId)) {
+                            trIds.push(trId);
+                          }
+                        }
+                      }
+                    }
+                  }
+                  trIds.push(...matchingTagRenderings);
                 } else {
                   console.error(`Invalid pattern ${to}`);
                 }
