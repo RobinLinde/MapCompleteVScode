@@ -15,7 +15,7 @@ jobs:
       - name: Install VSCE
         run: npm install -g vsce
       - name: Build
-        run: vsce package -o mapcomplete.vsix
+        run: vsce package -o mapcomplete.vsix --baseContentUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/src/branch/main/ --baseImagesUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/media/branch/main/
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
