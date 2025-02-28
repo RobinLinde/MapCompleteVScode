@@ -1,4 +1,3 @@
-name: Build extension
 on:
   push:
     paths-ignore:
@@ -8,12 +7,12 @@ on:
       - "**.md"
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: docker
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: npm install
-      - name: Instal VSCE
+      - name: Install VSCE
         run: npm install -g vsce
       - name: Build
         run: vsce package -o mapcomplete.vsix
@@ -21,4 +20,3 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mapcomplete
-          path: mapcomplete.vsix
