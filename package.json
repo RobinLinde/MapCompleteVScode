@@ -11,7 +11,11 @@
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/RobinLinde/MapCompleteVSCode.git"
+    "url": "https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode.git"
+  },
+  "homepage": "https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode",
+  "bugs": {
+    "url": "https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/issues"
   },
   "description": "Extension providing autocompletion and definition supoort for MapComplete themes and layers.",
   "keywords": [
@@ -36,7 +40,11 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "lint": "eslint",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --baseContentUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/src/branch/main/ --baseImagesUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/media/branch/main/",
+    "publish:vsc": "vsce publish --baseContentUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/src/branch/main/ --baseImagesUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/media/branch/main/",
+    "publish:ovsx": "ovsx publish --baseContentUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/src/branch/main/ --baseImagesUrl https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/media/branch/main/",
+    "publish": "npm run publish:vsc && npm run publish:ovsx"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

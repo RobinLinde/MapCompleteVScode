@@ -7,4 +7,4 @@ For convenience, this license is also available in the [`LICENSE.txt`](LICENSE.t
 ## Files
 
 - [`demo.gif`](demo.gif): A demo of the extension in action.
-- [`icon.png`](icon.png): The icon of the extension. Originally created by [pietervdvn](https://github.com/pietervdvn).
+- [`icon.png`](icon.png): The icon of the extension. Originally created by [pietervdvn](https://source.mapcomplete.org/pietervdvn).

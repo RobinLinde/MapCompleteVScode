@@ -1,6 +1,6 @@
 # MapCompleteVScode
 
-This is a Visual Studio Code extension for [MapComplete](https://github.com/pietervdvn/MapComplete).
+This is a Visual Studio Code extension for [MapComplete](https://source.mapcomplete.org/MapComplete/MapComplete).
 It adds autocompletion and defintion support for the MapComplete theme and layer configuration files.
 
 Currently the following features are supported:
@@ -50,7 +50,7 @@ ext install robin-van-der-linde.mapcompletevscode
 
 ### From the .vsix file
 
-You can also install the extension from the .vsix file. You can download the latest version from the [releases page](https://github.com/RobinLinde/MapCompleteVScode/releases). After downloading the .vsix file, you should be able to install it by going to extensions in Visual Studio Code and clicking on the three dots in the top right corner. Then click on "Install from VSIX..." and select the downloaded .vsix file.
+You can also install the extension from the .vsix file. You can download the latest version from the [releases page](https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/releases). After downloading the .vsix file, you should be able to install it by going to extensions in Visual Studio Code and clicking on the three dots in the top right corner. Then click on "Install from VSIX..." and select the downloaded .vsix file.
 
 It's also possible to install builds for any commit in any branch by checking out the workflow run for the commit you want to install, and downloading the .vsix file from the artifacts.
 
