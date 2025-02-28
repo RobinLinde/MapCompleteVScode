@@ -472,6 +472,83 @@ export class CacheWorker {
   }
 
   /**
+   * Find one or more matching tagRenderings in a layer definition text
+   *
+   * @param text the text of the layer definition
+   * @param identifier the identifier of the tagRendering to find, in theory this can be an id, a label or something with a wildcard
+   * @returns
+   */
+  private findTagRenderingInText(
+    text: string,
+    identifier: string
+  ): { paths: JSONPath[]; ids: string[] } {
+    const json = JSON.parse(text);
+    const tagRenderings = json.tagRenderings;
+    const tagRenderingIds: string[] = tagRenderings.map(
+      (tr: { id: string }) => tr.id
+    );
+    const tagRenderingLabels: string[][] = tagRenderings.map(
+      (tr: { labels: string[] }) => tr.labels
+    );
+
+    if (identifier.includes("*")) {
+      // This is a wildcard, so we need to handle it differently
+      const pattern = identifier.split(".")?.pop();
+      if (pattern) {
+        const regex = new RegExp(pattern.replace("*", ".*"));
+        const matchingTagRenderings = tagRenderingIds.filter((tr) =>
+          regex.test(tr)
+        );
+        const labelIndices: number[] = [];
+        for (let i = 0; i < tagRenderingLabels.length; i++) {
+          if (tagRenderingLabels[i] !== undefined) {
+            for (const label of tagRenderingLabels[i]) {
+              if (regex.test(label)) {
+                labelIndices.push(i);
+              }
+            }
+          }
+        }
+        return {
+          paths: [
+            ...matchingTagRenderings.map((tr) => ["tagRenderings", tr]),
+            ...labelIndices.map((i) => ["tagRenderings", i]),
+          ],
+          ids: [
+            ...matchingTagRenderings,
+            ...labelIndices.map((i) => tagRenderingIds[i]),
+          ],
+        };
+      }
+    } else {
+      // Single identifier, we just need to look through the ids and labels
+      const idIndex = tagRenderingIds.indexOf(identifier);
+      if (idIndex !== -1) {
+        return {
+          paths: [["tagRenderings", idIndex]],
+          ids: [identifier],
+        };
+      } else {
+        // Not found by id, so we need to look through the labels, which can match with more than one tagRendering
+        const labelIndices: number[] = [];
+        for (let i = 0; i < tagRenderingLabels.length; i++) {
+          if (tagRenderingLabels[i]?.includes(identifier)) {
+            labelIndices.push(i);
+          }
+        }
+        return {
+          paths: labelIndices.map((i) => ["tagRenderings", i]),
+          ids: labelIndices.map((i) => tagRenderingIds[i]),
+        };
+      }
+    }
+    return {
+      ids: [],
+      paths: [],
+    };
+  }
+
+  /**
    * Save tag renderings to cache
    *
    * @param text Text representation of layer
@@ -527,57 +604,16 @@ export class CacheWorker {
         // Read toFile and get the text
         const toContent = await vscode.workspace.fs.readFile(toFile[0]);
         const toText = new TextDecoder().decode(toContent);
-        const toJson = JSON.parse(toText);
 
-        let trIds: string[] = [];
+        const results = this.findTagRenderingInText(toText, tagRendering);
 
-        // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
-        // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
-        if (to.includes("*")) {
-          // Create a list of all tagRendering ids in the target file as well as all labels
-          const tagRenderingsInTarget: string[] = toJson.tagRenderings.map(
-            (tr: { id: string }) => tr.id
-          );
-          const labelsInTarget: string[][] = toJson.tagRenderings.map(
-            (tr: { labels: string[] }) => tr.labels
-          );
-
-          // Now we can see which matches the pattern, by converting the to to a regex
-          const pattern = to.split(".")?.pop();
-          if (pattern) {
-            const regex = new RegExp(pattern.replace("*", ".*"));
-            const matchingTagRenderings = tagRenderingsInTarget.filter((tr) =>
-              regex.test(tr)
-            );
-            for (let i = 0; i < labelsInTarget.length; i++) {
-              if (labelsInTarget[i] !== undefined) {
-                for (const label of labelsInTarget[i]) {
-                  if (regex.test(label)) {
-                    const trId = tagRenderingsInTarget[i];
-                    if (!trIds.includes(trId)) {
-                      trIds.push(trId);
-                    }
-                  }
-                }
-              }
-            }
-            trIds.push(...matchingTagRenderings);
-          } else {
-            console.error(`Invalid pattern ${to}`);
-          }
-        } else {
-          trIds = [tagRendering.split(".").pop() || ""];
-        }
-
-        for (const trId of trIds) {
-          const trIndex = toJson.tagRenderings.findIndex(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (tr: any) => tr.id === trId
-          );
-          const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+        for (let i = 0; i < results.paths.length; i++) {
+          const toRange = getStartEnd(toText, results.paths[i]);
 
           // Determine the ID of the to of the reference (original to item, but with last part replaced by the tagRendering ID)
-          const toId = [...to.split(".").slice(0, -1), trId].join(".");
+          const toId = [...to.split(".").slice(0, -1), results.ids[i]].join(
+            "."
+          );
 
           this.cache.items.push({
             id: tagRendering,
@@ -636,57 +672,19 @@ export class CacheWorker {
             // Read toFile and get the text
             const toContent = await vscode.workspace.fs.readFile(toFile[0]);
             const toText = new TextDecoder().decode(toContent);
-            const toJson = JSON.parse(toText);
 
-            let trIds: string[] = [];
+            const results = this.findTagRenderingInText(
+              toText,
+              tagRendering.builtin
+            );
 
-            // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
-            // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
-            if (to.includes("*")) {
-              // Create a list of all tagRendering ids in the target file, as well as all labels
-              const tagRenderingsInTarget: string[] = toJson.tagRenderings.map(
-                (tr: { id: string }) => tr.id
-              );
-              const labelsInTarget: string[][] = toJson.tagRenderings.map(
-                (tr: { labels: string[] }) => tr.labels
-              );
-
-              // Now we can see which matches the pattern, by converting the to to a regex
-              const pattern = to.split(".")?.pop();
-              if (pattern) {
-                const regex = new RegExp(pattern.replace("*", ".*"));
-                const matchingTagRenderings = tagRenderingsInTarget.filter(
-                  (tr) => regex.test(tr)
-                );
-                for (let i = 0; i < labelsInTarget.length; i++) {
-                  if (labelsInTarget[i] !== undefined) {
-                    for (const label of labelsInTarget[i]) {
-                      if (regex.test(label)) {
-                        const trId = tagRenderingsInTarget[i];
-                        if (!trIds.includes(trId)) {
-                          trIds.push(trId);
-                        }
-                      }
-                    }
-                  }
-                }
-                trIds.push(...matchingTagRenderings);
-              } else {
-                console.error(`Invalid pattern ${to}`);
-              }
-            } else {
-              trIds = [tagRendering.builtin.split(".").pop() || ""];
-            }
-
-            for (const trId of trIds) {
-              const trIndex = toJson.tagRenderings.findIndex(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tr: any) => tr.id === trId
-              );
-              const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+            for (let i = 0; i < results.paths.length; i++) {
+              const toRange = getStartEnd(toText, results.paths[i]);
 
               // Determine the ID of the to of the reference (original to item, but with last part replaced by the tagRendering ID)
-              const toId = [...to.split(".").slice(0, -1), trId].join(".");
+              const toId = [...to.split(".").slice(0, -1), results.ids[i]].join(
+                "."
+              );
 
               this.cache.items.push({
                 id: tagRendering.builtin,
@@ -740,53 +738,20 @@ export class CacheWorker {
               // Read toFile and get the text
               const toContent = await vscode.workspace.fs.readFile(toFile[0]);
               const toText = new TextDecoder().decode(toContent);
-              const toJson = JSON.parse(toText);
 
-              const trIds: string[] = [];
+              const results = this.findTagRenderingInText(
+                toText,
+                builtinTagRendering
+              );
 
-              // If the to contains an asterisk, it can reference to more than one tagRendering, within one file, so we might need more than one reference
-              // This can be something like layer.*, but also layer.*-question, or any other pattern with an asterisk as a wildcard
-              if (to.includes("*")) {
-                // Create a list of all tagRendering ids in the target file
-                const tagRenderingsInTarget: string[] =
-                  toJson.tagRenderings.map((tr: { id: string }) => tr.id);
-                const labelsInTarget: string[][] = toJson.tagRenderings.map(
-                  (tr: { labels: string[] }) => tr.labels
-                );
-                // Now we can see which matches the pattern, by converting the to to a regex
-                const pattern = to.split(".")?.pop();
-                if (pattern) {
-                  const regex = new RegExp(pattern.replace("*", ".*"));
-                  const matchingTagRenderings = tagRenderingsInTarget.filter(
-                    (tr) => regex.test(tr)
-                  );
-                  for (let i = 0; i < labelsInTarget.length; i++) {
-                    if (labelsInTarget[i] !== undefined) {
-                      for (const label of labelsInTarget[i]) {
-                        if (regex.test(label)) {
-                          const trId = tagRenderingsInTarget[i];
-                          if (!trIds.includes(trId)) {
-                            trIds.push(trId);
-                          }
-                        }
-                      }
-                    }
-                  }
-                  trIds.push(...matchingTagRenderings);
-                } else {
-                  console.error(`Invalid pattern ${to}`);
-                }
-              }
-
-              for (const trId of trIds) {
-                const trIndex = toJson.tagRenderings.findIndex(
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (tr: any) => tr.id === trId
-                );
-                const toRange = getStartEnd(toText, ["tagRenderings", trIndex]);
+              for (let i = 0; i < results.paths.length; i++) {
+                const toRange = getStartEnd(toText, results.paths[i]);
 
                 // Determine the ID of the to of the reference (original to item, but with last part replaced by the tagRendering ID)
-                const toId = [...to.split(".").slice(0, -1), trId].join(".");
+                const toId = [
+                  ...to.split(".").slice(0, -1),
+                  results.ids[i],
+                ].join(".");
 
                 this.cache.items.push({
                   id: builtinTagRendering,
