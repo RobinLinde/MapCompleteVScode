@@ -1,4 +1,8 @@
-# MapCompleteVScode
+# Moved
+
+This extension is now developed at the [MapComplete Forgejo](https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode).
+
+## Original ReadMe
 
 This is a Visual Studio Code extension for [MapComplete](https://source.mapcomplete.org/MapComplete/MapComplete).
 It adds autocompletion and defintion support for the MapComplete theme and layer configuration files.
@@ -32,11 +36,11 @@ It is also possible to deactivate the caching using setting `mapcomplete.caching
 
 All notable changes to this project are documented in the [CHANGELOG](CHANGELOG.md) file.
 
-## Installation
+### Installation
 
 The extension can be installed in several ways:
 
-### From the marketplace
+#### From the marketplace
 
 The extension is available both in the [Visual Studio Code marketplace](https://marketplace.visualstudio.com/items?itemName=robin-van-der-linde.mapcompletevscode) and the [Open VSX registry](https://open-vsx.org/extension/robin-van-der-linde/mapcompletevscode).
 
@@ -48,13 +52,13 @@ Alternatively you can press `Ctrl+P` and paste the following command:
 ext install robin-van-der-linde.mapcompletevscode
 ```
 
-### From the .vsix file
+#### From the .vsix file
 
 You can also install the extension from the .vsix file. You can download the latest version from the [releases page](https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode/releases). After downloading the .vsix file, you should be able to install it by going to extensions in Visual Studio Code and clicking on the three dots in the top right corner. Then click on "Install from VSIX..." and select the downloaded .vsix file.
 
 It's also possible to install builds for any commit in any branch by checking out the workflow run for the commit you want to install, and downloading the .vsix file from the artifacts.
 
-## Usage
+### Usage
 
 Most of the features should be pretty self-explanatory. As for the implementation support, the 'anchor' for this is the id property of the layer, tagRendering or filter. This means that if you want to see where a layer is used, you should be able to see all uses by using `CTRL+F12` on the id property of the layer, or by right-clicking on the id property and selecting "Go to Implementations".
 
