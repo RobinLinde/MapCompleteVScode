@@ -2,12 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version 1.2.2 (2025-XX-XX)
+## Version 1.2.2 (2025-03-01)
+
+This is the last release of the extension on GitHub, from now on you'll be able to find the source code on the [MapComplete Forgejo](https://source.mapcomplete.org/Robin-van-der-Linde/MapCompleteVScode). Releases will still be available on the VScode Marketplace and Open VSX as well.
 
 ### Fixed
 
 - When a tagRendering is re-used by `layer.*`, it's also picked up by the implementation support ([#34](https://github.com/RobinLinde/MapCompleteVScode/issues/34)).
 - Fix a wrong ID for the refresh command.
+- Handle labels (mostly) correctly in the implementation support. ([#35](https://github.com/RobinLinde/MapCompleteVScode/issues/35))
 
 ## Version 1.2.1 (2025-02-20)
 
